@@ -806,7 +806,7 @@ int main(void)
     check("its title; the cursor on the song playing; the next marked >", !strcmp(text_at(4), "SETLIST 1") && !strcmp(texts[1].t, "1/3") && lit(100, 11) && text_at(19)[0] == '>');
     check("the opening YES moved nothing", text_at(19)[0] == '>');
     tap(DOWN); tap(DOWN); page_draw();
-    check("UP/DOWN move the cursor only: the third row inverted, the > still on the second, * on the first", lit(100, 25) && !lit(100, 11) && text_at(19)[0] == '>' && text_at(12)[0] == '*' && text_at(26)[0] == ' ');
+    check("UP/DOWN move the cursor only: the third row inverted, the > still on the second, * on the first", lit(100, 25) && !lit(100, 11) && text_at(19)[0] == '>' && text_at(12)[0] == ' ' && lit(25, 14) && lit(27, 14) && !lit(28, 14) && text_at(26)[0] == ' ');
     check("YES is the window's", tap(YES) == 1);
     page_draw();
     check("and moves the > to the cursor", text_at(26)[0] == '>' && text_at(19)[0] == ' ');
@@ -912,14 +912,14 @@ int main(void)
     as_setlists_open(); tap(UP); tap(UP); tap(YES); job(); as_tick(0);              /* from the first song */
     as_key(CUE, 1); tap(YES);                         /* open, nothing chosen */
     stock_chain(); as_tick(0); page_draw();           /* song 2 starts while it is open */
-    check("open across a song change: * on song 2, > on song 3", text_at(19)[0] == '*' && text_at(26)[0] == '>' && text_at(12)[0] == ' ' && !strcmp(texts[1].t, "2/3"));
+    check("open across a song change: the playing mark on song 2, > on song 3", text_at(19)[0] == ' ' && lit(27, 21) && text_at(26)[0] == '>' && text_at(12)[0] == ' ' && !strcmp(texts[1].t, "2/3"));
     as_key(CUE, 0);
     check("released with nothing chosen: song 3 stays next", chain() == 6 && cs1[W(6) + 100] == s2);
     change_window = 0x46c7d384u; as_tick(0); job(); change_window = 0; as_tick(0);
     as_setlists_open(); tap(UP); tap(UP); tap(YES); job(); as_tick(0);              /* from the first song again */
     as_key(CUE, 1); tap(YES); tap(DOWN); tap(DOWN); tap(YES);   /* song 3 chosen to follow song 1 */
     stock_chain(); as_tick(0); page_draw();           /* but song 2 starts before CUE is released */
-    check("song 3 was chosen at once, so song 3 starts: * on it, nothing after it", text_at(26)[0] == '*' && chain() == 0xffffffffu);
+    check("song 3 was chosen at once, so song 3 starts: the mark on it (white on the cursor's row), nothing after it", lit(100, 28) && !lit(27, 28) && chain() == 0xffffffffu);
     as_key(CUE, 0);
     page_draw();
     check("while a setlist plays: its name in the Part box", !strcmp(text_at(34), "LIST 1") && lit(40, 33) && lit(15, 42));

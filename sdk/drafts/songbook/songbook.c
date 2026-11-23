@@ -1540,6 +1540,13 @@ static void text(unsigned char *frame, int x, int top, const char *t)
     ((void (*)(uint32_t, void *, int, int, int, const char *))0x40012bd8u)(0x400ba876u, surface, x, 59 - top, -1, t);
 }
 #endif
+/* The playing song's mark: a filled triangle pointing right, 3 wide and 5 high, its top-left at x, top. */
+static void playing_mark(unsigned char *frame, int x, int top)
+{
+    for (int r = 0; r < 5; ++r) put(frame, x, top + r, 1);
+    for (int r = 1; r < 4; ++r) put(frame, x + 1, top + r, 1);
+    put(frame, x + 2, top + 2, 1);
+}
 static void invert(unsigned char *frame, int x0, int y0, int x1, int y1)
 {
     for (int y = y0; y <= y1; ++y) for (int x = x0; x <= x1; ++x) put(frame, x, y, !get(frame, x, y));
@@ -1583,10 +1590,11 @@ static void draw_page(struct as_state *s, unsigned char *frame)
     for (unsigned r = 0; r < PAGE_ROWS && s->page_top + r < n; ++r) {
         const struct sl_entry *e = &s->lists.e[l][s->page_top + r];
         t = put_num(line, e->book + 1u); *t++ = '.'; t = put_num(t, e->slot + 1u); *t++ = ' ';
-        for (unsigned k = 0; k < 13u && e->name[k]; ++k) *t++ = e->name[k];
+        for (unsigned k = 0; k < 12u && e->name[k]; ++k) *t++ = e->name[k];
         *t = 0;
         int top = 12 + 7 * (int)r;
-        text(frame, 25, top, line);
+        text(frame, 29, top, line);                        /* x 25-27: the playing song's mark */
+        if (s->sl_active && s->sl_list == l && s->page_top + r == s->sl_cur) playing_mark(frame, 25, top);
         if (s->page_top + r == s->page_cur) invert(frame, 24, top - 1, 101, top + 5);
     }
 }
@@ -1610,12 +1618,13 @@ static void draw_peek(struct as_state *s, unsigned char *frame)
         unsigned k = top + r;
         const struct sl_entry *e = &s->sl_e[k];
         t = line;
-        *t++ = k == nx ? '>' : k == cur ? '*' : ' ';
+        *t++ = k == nx ? '>' : ' ';
         t = put_num(t, e->book + 1u); *t++ = '.'; t = put_num(t, e->slot + 1u); *t++ = ' ';
         for (unsigned i = 0; i < 12u && e->name[i]; ++i) *t++ = e->name[i];
         *t = 0;
         int y = 12 + 7 * (int)r;
         text(frame, 25, y, line);
+        if (k == cur && k != nx) playing_mark(frame, 25, y);   /* the song playing */
         if (k == cs) invert(frame, 24, y - 1, 101, y + 5);
     }
 }
