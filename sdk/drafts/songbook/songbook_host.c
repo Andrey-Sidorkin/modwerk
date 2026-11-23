@@ -955,7 +955,7 @@ int main(void)
         check("back in A, before its setlist starts: the setlist already in the Part box, not the book", text_at(34)[0] != 0 && !strcmp(text_at(50), "2/3"));
         yes_handler = y; }
       for (int i = 0; i < 400; ++i) as_tick(0);
-      check("back in project A: its setlist started again", posted == pp + 2); }
+      check("back in project A: its setlist started again, in the job that read its files", posted == pp + 1); }
     job(); for (int i = 0; i < 60; ++i) as_tick(0);
     check("on song 2, A's own, the run state reset once", chosen == 6 && cs1[W(6) + 100] == s1 && resets == 1 && arr_state == 0);
     check("and song 3 chained after the reset", chain() == 7);
@@ -1036,6 +1036,21 @@ int main(void)
       check("after it: the book back and the setlist on song 2", book() == bk && bk != 0 && chosen == 6 && chain() == 7);
       for (int i = 0; i < 700; ++i) as_tick(0);
       check("and no second job", posted == pp + 1); }
+    /* the same after a LOAD of another project and back: the job that reads the files also switches and starts */
+    { unsigned bk = book();
+      job();                                          /* LOAD's save of A */
+      strcpy(job_name, "PROJB");
+      as_project_load(); as_project_loaded(); as_project_new(); mark(0x30); chosen = 0;
+      host_dir = "/SET/PROJB"; strcpy(cur_name, "PROJB");
+      for (int i = 0; i < 700; ++i) as_tick(0); job(); for (int i = 0; i < 700; ++i) as_tick(0);
+      job();                                          /* LOAD's save of B */
+      strcpy(job_name, "PROJ");
+      as_project_load(); as_project_loaded(); as_project_new(); mark(0x10); chosen = 0;
+      host_dir = "/SET/PROJ"; strcpy(cur_name, "PROJ");
+      int pp = posted; for (int i = 0; i < 700; ++i) as_tick(0);
+      check("back in A from B: one card job of the module's", posted == pp + 1);
+      job(); for (int i = 0; i < 700; ++i) as_tick(0);
+      check("which brings back A's book 2 and its setlist on song 2, and no second job", book() == bk && chosen == 6 && chain() == 7 && posted == pp + 1); }
 
     printf("%d checks, %d failed\n", checks, failures);
     return failures != 0;

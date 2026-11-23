@@ -816,6 +816,16 @@ static int sl_finish(struct as_state *s)
 /* ---------------------------------------------------------------- the card task */
 /* Stock's arrangement writer, stepped into at its entry (the site's jmp reaches as_writer_entry below). */
 static int as_writer_(struct as_state *s, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4);
+/* A project left in a setlist: the return's job starts it again after the switch. 1 when it was handed over. */
+static int return_setlist(struct as_state *s)
+{
+    int8_t l = s->resume;
+    if (l < 0 || s->lists_unread || s->sl_active || s->resume_cur >= s->lists.count[l]) return 0;
+    s->lists.open = (uint8_t)l;
+    s->sl_req = (int8_t)s->resume_cur;
+    s->resume = -1;
+    return 1;
+}
 /* Every job the module posts (a switch, a setlist's start, end or restart, a load's read) borrows SYNC TO CARD's, which
  * ends with NOW SAFE TO EJECT!: closed when it opens, counted from the job's end (the developer's MKI: it showed when a
  * setlist was restarted from another song, 24 November 2026). */
@@ -829,6 +839,7 @@ int as_writer(uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4)
 }
 static int as_writer_(struct as_state *s, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4)
 {
+    int own_read = s->load_read && s->load_posted;        /* the module's job after the whole load */
     if (s->load_read && (s->load_posted || (!s->loading && !loading_other())))
         load_read(s);                                     /* the module's own job after the load, or any card job once
                                                            * stock's project name is the new one */
@@ -844,6 +855,18 @@ static int as_writer_(struct as_state *s, uint32_t a1, uint32_t a2, uint32_t a3,
         s->restore = (int8_t)(b > 0 ? b : -1);
         s->restore_ticks = 0;
         s->reloaded_slots = 1;                            /* the slots are as stock left them: a return may go now */
+    }
+    /* That job also takes the return to where the project was left (its book, and its setlist): one card job of the
+     * module's after a LOAD of another project, not a second one (the developer's MKI, 24 November 2026). */
+    if (own_read && s->pending < 0 && (s->restore < 0 || s->reloaded_slots)) {
+        if (s->restore >= 0) {
+            s->pending = s->restore;
+            s->reapply = 1;
+            s->restore = -1;
+            s->reloaded_slots = 0;
+            ev(7u);
+        }
+        return_setlist(s);                                /* book 1 too: the setlist in this job */
     }
     if (s->lists_req) { s->lists_req = 0; s->hush = 1; }
     if (!s->sl_active && slots_are_foreign()) {           /* slots 7 and 8 hold a setlist's songs no one plays: */
@@ -1480,11 +1503,7 @@ void as_tick(void *api)
             /* A project left in a setlist: the same job starts it again, after the switch (one card job, not a second
              * one once the book is back: the developer's MKI, 24 November 2026). */
             int8_t resume = s->resume;
-            if (resume >= 0 && !s->lists_unread && !s->sl_active && s->resume_cur < s->lists.count[resume]) {
-                s->lists.open = (uint8_t)resume;
-                s->sl_req = (int8_t)s->resume_cur;
-                s->resume = -1;
-            }
+            return_setlist(s);
             int rc = our_post(s);
             s->restore_rc = (int8_t)rc;
             ev(rc >= 0 ? 7u : 8u);
