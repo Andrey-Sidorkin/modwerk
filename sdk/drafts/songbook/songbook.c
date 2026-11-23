@@ -411,8 +411,7 @@ static void remember(struct as_state *s)
     wr8(RECORD + 4, s->book);
     wr8(RECORD + 5, s->backup);
     wr8(RECORD + 6, s->damaged);                         /* a book read only in part: kept through a reload (#1737) */
-    /* Slots 7 and 8 hold setlist songs (bit 7), and the song playing (bits 0-3): a power cycle comes back to it. */
-    wr8(RECORD + 7, (uint8_t)(s->sl_active ? 0x80u | (s->sl_cur & 15u) : s->reread ? 0x80u : 0u));
+    /* Byte 7 (slots 7 and 8 hold setlist songs) is set and cleared only by slots_foreign(). */
     wr32(RECORD + 8, slots_sum());
 }
 
@@ -599,6 +598,13 @@ static void read_lists(struct as_state *s)
 }
 
 /* ---------------------------------------------------------------- a setlist playing */
+/* The battery record's byte 7: slots 7 and 8 hold setlist songs (bit 7) and the song playing (bits 0-3). Set when a
+ * setlist starts and at each song; cleared only once the book has been read back into its slots from its files. While
+ * it is set and no setlist is playing in this copy's memory (a power cycle, a reinstall, a load), every card job first
+ * reads the book back and writes none of it: the slots were written into book 1's arr07/arr08 after a power cycle on
+ * the developer's MKI (23 November 2026). */
+static void slots_foreign(int on, unsigned cur) { wr8(RECORD + 7, (uint8_t)(on ? 0x80u | (cur & 15u) : 0u)); }
+static int slots_are_foreign(void) { return (rd8(RECORD + 7) & 0x80u) != 0; }
 #define SL_A 6u
 #define SL_B 7u
 static uint32_t work_at(unsigned slot) { return WORKING + slot * BLOCK; }
@@ -746,6 +752,7 @@ static int sl_load(struct as_state *s)
     if (start + 1 < n) put_song(s, 1, start + 1);
     s->sl_active = 1;
     s->sl_go = 1;
+    slots_foreign(1, start);
     return 1;
 }
 
@@ -768,7 +775,9 @@ static int sl_finish(struct as_state *s)
     s->sl_active = 0;
     s->sl_end = 0;
     s->sl_go = 0;
-    ok &= read_book(s, s->book, "work");
+    int back = read_book(s, s->book, "work");
+    ok &= back;
+    if (back) slots_foreign(0, 0);                        /* the book's own arrangements in slots 7 and 8 again */
     wr8(CHANGED, 0);
     wr32(CHAIN, 0xffffffffu);
     s->redraw = 1;
@@ -782,18 +791,19 @@ int as_writer(uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4)
     struct as_state *s = ready();
     if (s->lists_unread) read_lists(s);                   /* installed into an open project: its setlists first */
     if (s->lists_req) { s->lists_req = 0; s->hush = 1; }
-    if (s->reread) {                                      /* installed while a setlist played: the book back, unwritten */
-        s->hush = 1;
+    if (!s->sl_active && slots_are_foreign()) {           /* slots 7 and 8 hold a setlist's songs no one plays: */
+        s->hush = 1;                                      /* the book back from its files first, none of it written */
         int ok = read_book(s, s->book, "work");
         wr8(CHANGED, 0);
+        int only = s->reread_posted && s->pending < 0 && s->sl_req < 0;   /* the job the module posted for this */
         s->reread = 0;
         s->reread_posted = 0;
         s->damaged = (uint8_t)!ok;
         if (!ok) s->failed = 1;
+        else slots_foreign(0, 0);
         s->redraw = 1;
-        write_lists(s);
         remember(s);
-        return 0;
+        if (!ok || only) { write_lists(s); return 0; }    /* nothing more in this job */
     }
     if (s->sl_active) {                                   /* slots 7 and 8 hold setlist songs: no book file written */
         if (s->sl_end) {
@@ -1027,8 +1037,6 @@ unsigned as_modules_ready(void)
         /* The book in the slots was read only in part: still write back only what is edited, after a reinstall or
          * after another build's trial (the owner's review, #1737). */
         s->damaged = (uint8_t)(rd8(RECORD + 6) == 1);
-        /* A setlist was playing: slots 7 and 8 are its songs. Nothing of them is written; the book is read again. */
-        if (rd8(RECORD + 7) & 0x80u) s->reread = 1;
         s->rec7 = 0;                                      /* installed, not a power cycle: no song to come back to */
     } else { s->book = 0; ev(0xf); }
     remember(s);
@@ -1397,7 +1405,7 @@ void as_tick(void *api)
             unsigned done = next ^ 1u;
             take_back(s, done);
             s->sl_cur = s->song_at[next];                 /* the next one, or the one chosen with CUE + YES */
-            wr8(RECORD + 7, (uint8_t)(0x80u | (s->sl_cur & 15u)));   /* a power cycle comes back to it */
+            slots_foreign(1, s->sl_cur);                  /* a power cycle comes back to it */
             s->sl_cur_slot = (uint8_t)next_slot;
             unsigned k = s->sl_cur + 1u;
             if (k < s->sl_n) put_song(s, done, k); else s->song_at[done] = 0xff;
@@ -1416,7 +1424,9 @@ void as_tick(void *api)
             if (post_write() < 0) s->sl_end = 0;            /* busy: again next frame */
         }
     }
-    if (s->reread && s->pending < 0 && !s->reread_posted && stopped() && post_write() >= 0) s->reread_posted = 1;
+    if (!s->sl_active && slots_are_foreign() && s->resume < 0 && s->sl_req < 0 && s->pending < 0 && !s->reread_posted
+        && !s->loading && s->since_hook > 240 && stopped() && post_write() >= 0) s->reread_posted = 1;   /* the book back into slots 7 and 8 (a resume's job
+                                                                    * does it first anyway) */
     /* A project left in a setlist: once its load is over (the book back, arranger mode restored, quiet), that setlist
      * again from the song it was on, stopped, as YES on the SETLSTS page starts it. */
     if (s->resume >= 0 && !s->loading && s->since_hook > 240 && s->restore < 0 && s->pending < 0 && !s->redraw
