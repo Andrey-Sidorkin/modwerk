@@ -99,16 +99,108 @@
     "file": "LICENSE",
     "declaration": "Original module by Andrey Sidorkin, MIT. No firmware, extracted stock code or built images are included."
   },
-  "media": [],
+  "media": [
+    {
+      "path": "media/ot-books-list.png",
+      "captureType": "emulator",
+      "caption": "ARR > BOOKS (stock's CHANGE, renamed): BOOK 1 at the top right, the open setlist (LIST 1) at the bottom right. LEFT/RIGHT step the book.",
+      "alt": "ARR > BOOKS list of book 1 with SONG ALPHA, BRAVO and CHARLIE, BOOK 1 top right and LIST 1 bottom right.",
+      "credit": "Andrey Sidorkin (headless capture)",
+      "license": "LicenseRef-OT-UI-Documentation",
+      "source": "original",
+      "otUi": {
+        "page": "ARR > BOOKS",
+        "shows": "location",
+        "firmware": "1.40C",
+        "moduleVersion": "0.2.0-experimental",
+        "imageSha256": "24fcf9165af1a87bd725553d6327ae938333190bdfa00ce6e705ad408108863e",
+        "setup": "Headless ot_emu; MKI panel; stopped transport; Modwerk beta base 0.7.13 with the package over the emulated USB; 128x64 LCD as the panel link carries it, integer scale 6."
+      }
+    },
+    {
+      "path": "media/ot-books-added.png",
+      "captureType": "emulator",
+      "caption": "CUE + YES on an arrangement adds it to the open setlist.",
+      "alt": "ARR > BOOKS with the message B1 1 ADDED TO LIST 1.",
+      "credit": "Andrey Sidorkin (headless capture)",
+      "license": "LicenseRef-OT-UI-Documentation",
+      "source": "original",
+      "otUi": {
+        "page": "ARR > BOOKS",
+        "shows": "controls",
+        "firmware": "1.40C",
+        "moduleVersion": "0.2.0-experimental",
+        "imageSha256": "24fcf9165af1a87bd725553d6327ae938333190bdfa00ce6e705ad408108863e",
+        "setup": "Headless ot_emu; MKI panel; stopped transport; Modwerk beta base 0.7.13 with the package over the emulated USB; 128x64 LCD as the panel link carries it, integer scale 6."
+      }
+    },
+    {
+      "path": "media/ot-setlists-page.png",
+      "captureType": "emulator",
+      "caption": "The SETLSTS page from the Arranger menu: the setlist's songs as book.arrangement and name. YES starts it from the cursor.",
+      "alt": "SETLIST 1 page with 1.1 SONG ALPHA and 1.2 SONG BRAVO, 2/16.",
+      "credit": "Andrey Sidorkin (headless capture)",
+      "license": "LicenseRef-OT-UI-Documentation",
+      "source": "original",
+      "otUi": {
+        "page": "SETLSTS",
+        "shows": "location-and-controls",
+        "firmware": "1.40C",
+        "moduleVersion": "0.2.0-experimental",
+        "imageSha256": "24fcf9165af1a87bd725553d6327ae938333190bdfa00ce6e705ad408108863e",
+        "setup": "Headless ot_emu; MKI panel; stopped transport; Modwerk beta base 0.7.13 with the package over the emulated USB; 128x64 LCD as the panel link carries it, integer scale 6."
+      }
+    },
+    {
+      "path": "media/ot-setlist-main.png",
+      "captureType": "emulator",
+      "caption": "While a setlist plays: its name in the Part box, its sign and the song's place on the pattern line, the next song on the chain line.",
+      "alt": "Main screen with LIST 1 in the Part box, 1/2 under it and >SONG BRAVO after the rows.",
+      "credit": "Andrey Sidorkin (headless capture)",
+      "license": "LicenseRef-OT-UI-Documentation",
+      "source": "original",
+      "otUi": {
+        "page": "MAIN",
+        "shows": "controls",
+        "firmware": "1.40C",
+        "moduleVersion": "0.2.0-experimental",
+        "imageSha256": "24fcf9165af1a87bd725553d6327ae938333190bdfa00ce6e705ad408108863e",
+        "setup": "Headless ot_emu; MKI panel; stopped transport; Modwerk beta base 0.7.13 with the package over the emulated USB; 128x64 LCD as the panel link carries it, integer scale 6."
+      }
+    },
+    {
+      "path": "media/ot-setlist-window.png",
+      "captureType": "emulator",
+      "caption": "Hold CUE and press YES on the main screen: the playing song (filled triangle), the next one (>); YES makes the song under the cursor the next.",
+      "alt": "Setlist window over the main screen with song 1 playing and song 2 next.",
+      "credit": "Andrey Sidorkin (headless capture)",
+      "license": "LicenseRef-OT-UI-Documentation",
+      "source": "original",
+      "otUi": {
+        "page": "MAIN",
+        "shows": "controls",
+        "firmware": "1.40C",
+        "moduleVersion": "0.2.0-experimental",
+        "imageSha256": "24fcf9165af1a87bd725553d6327ae938333190bdfa00ce6e705ad408108863e",
+        "setup": "Headless ot_emu; MKI panel; stopped transport; Modwerk beta base 0.7.13 with the package over the emulated USB; 128x64 LCD as the panel link carries it, integer scale 6."
+      }
+    }
+  ],
   "access": {
-    "location": "ARR > CHANGE",
+    "location": "ARR > BOOKS and SETLSTS",
     "steps": [
-      "Open ARR > CHANGE (MKII: ARR, then CHANGE; MKI: FUNC + PATTERN for arrangement mode, FUNC + BANK, then CHANGE), with the transport stopped.",
-      "Press RIGHT or LEFT to step to the next or previous book (1 to 16); BOOK 2 and so on shows at the top right.",
-      "Pick one of the book's 8 arrangements as usual and edit, save or chain it: stock's arrangement functions work inside the book.",
-      "Save the project as usual: every book is saved with it.",
-      "Before removing the module, step back to book 1."
+      "Open ARR > BOOKS (MKII: ARR, then BOOKS; MKI: FUNC + PATTERN for arrangement mode, FUNC + BANK, then BOOKS), with the transport stopped.",
+      "Press RIGHT or LEFT to step to the next or previous book (1 to 16); BOOK 2 and so on shows at the top right. Arrangements work inside the book as in stock.",
+      "Press CUE + YES on an arrangement to add it to the open setlist (LIST 1 at the bottom right).",
+      "Open SETLSTS in the Arranger menu, put the cursor on the first song and press YES, close the menu and press PLAY: each song follows the last.",
+      "Open ARR > BOOKS, stopped, to end a setlist; end it and step back to book 1 before removing the module."
     ],
-    "screenshots": []
+    "screenshots": [
+      "media/ot-books-list.png",
+      "media/ot-books-added.png",
+      "media/ot-setlists-page.png",
+      "media/ot-setlist-main.png",
+      "media/ot-setlist-window.png"
+    ]
   }
 }

@@ -7,8 +7,8 @@
 
 Stock keeps 8 arrangements per project, in `arr01.work` to `arr08.work`. Songbook makes them book 1 of 16
 books of 8: book 2 is `arr09` to `arr16`, book 3 `arr17` to `arr24`, and so on up to book 16, `arr121` to `arr128`.
-In ARR > CHANGE, with the transport stopped, LEFT and RIGHT step to the book before or after, and BOOK 2 (and so on)
-shows at the screen's top right; the list shows the new book's names at once. Inside a book, every stock arrangement function works as usual: edit, ARR SAVE,
+In ARR > BOOKS (stock's CHANGE, renamed), with the transport stopped, LEFT and RIGHT step to the book before or after,
+and BOOK 2 (and so on) shows at the screen's top right; the list shows the new book's names at once. Inside a book, every stock arrangement function works as usual: edit, ARR SAVE,
 RELOAD, COPY, CLEAR, chaining and playback.
 
 The Octatrack's own code writes and reads every one of these files, so they are stock arrangement files in every
@@ -24,10 +24,10 @@ the song's place (`|≡ 2/6`) under it, and the next song's name after the playi
 
 | Where | Keys | What it does |
 | --- | --- | --- |
-| ARR > CHANGE, stopped | RIGHT | Write the current book to the card, then load the next one (up to 16) |
-| ARR > CHANGE, stopped | LEFT | The same, to the book before (down to 1) |
-| ARR > CHANGE, playing | LEFT / RIGHT | Nothing changes; it says STOP TO CHANGE BOOK |
-| ARR > BOOKS (stock's CHANGE, renamed) | CUE + YES | Add the arrangement under the cursor to the end of the open setlist (B2 5 ADDED TO LIST 3) |
+| ARR > BOOKS (stock's CHANGE, renamed), stopped | RIGHT | Write the current book to the card, then load the next one (up to 16) |
+| ARR > BOOKS, stopped | LEFT | The same, to the book before (down to 1) |
+| ARR > BOOKS, playing | LEFT / RIGHT | Nothing changes; it says STOP TO CHANGE BOOK |
+| ARR > BOOKS | CUE + YES | Add the arrangement under the cursor to the end of the open setlist (B2 5 ADDED TO LIST 3) |
 | ARR > BOOKS, stopped | CUE + LEFT / RIGHT | Move the arrangement under the cursor one place up or down in its book |
 | Arranger menu | SETLSTS (stock's CHAIN, replaced) | Open the setlists page |
 | SETLSTS page | LEFT / RIGHT | The setlist before or after (1 to 16) |
@@ -44,8 +44,8 @@ the song's place (`|≡ 2/6`) under it, and the next song's name after the playi
 
 A book never used starts as 8 empty arrangements. Each book comes back on the arrangement you last chose in it (a
 book not visited yet on arrangement 1), with the list's cursor on it; after a power cycle or a project load every book
-but the one in use starts on arrangement 1 again. Switching takes about as long as stock's SYNC TO CARD and ends with
-its NOW SAFE TO EJECT! message. Without a project loaded it says NO PROJECT; while the card is busy, CARD BUSY. If an
+but the one in use starts on arrangement 1 again. Switching takes about as long as stock's SYNC TO CARD, whose job it
+borrows; its NOW SAFE TO EJECT! message is closed as it opens. Without a project loaded it says NO PROJECT; while the card is busy, CARD BUSY. If an
 arrangement file does not read, it says BOOK FILE ERROR, that arrangement shows empty, and its file is left as it is
 unless you edit that arrangement.
 
@@ -69,9 +69,9 @@ unless you edit that arrangement.
 
 ### Quick tutorial
 
-1. In ARR > CHANGE, press RIGHT: BOOK 2, with 8 empty arrangements.
+1. In ARR > BOOKS, press RIGHT: BOOK 2, with 8 empty arrangements.
 2. Choose arrangement 1, open the editor and add a few rows.
-3. Back in ARR > CHANGE, press LEFT: BOOK 1, your original arrangements.
+3. Back in ARR > BOOKS, press LEFT: BOOK 1, your original arrangements.
 4. Press RIGHT again: book 2's rows are back.
 5. Press LEFT to return to book 1 before you finish.
 
@@ -86,7 +86,8 @@ unless you edit that arrangement.
   A RELOAD or a power cycle drops edits not yet written, as stock does for unsaved changes. A song renamed while a
   setlist plays keeps its old name.
 - **A project comes back into its setlist.** LOAD and RELOAD PROJECT return to the setlist and song saved with the
-  project, a power cycle to the song playing. Without the module the project opens on book 1.
+  project, a power cycle to the song playing; the Part box shows the setlist while it comes back. Without the module the
+  project opens on book 1.
 - **Changes to stock flows (only while the module is installed):** the arranger menu reads BOOKS for CHANGE and
   SETLSTS for CHAIN (CHAIN itself is replaced: a two-song setlist does its job, across books too); the menu's title
   reads `ARR B2:3:NAME` (book, arrangement, name) or, in a setlist, `STL:<setlist>:<song no>:<song name>`; the
@@ -94,7 +95,7 @@ unless you edit that arrangement.
   pattern line show the setlist instead of the Part and the pattern. CUE + YES on the main screen is taken only while a
   setlist plays (stock does nothing with it there).
 
-- **Takes:** LEFT and RIGHT in ARR > CHANGE (stock does nothing with them there), the top right corner of that list
+- **Takes:** LEFT and RIGHT in ARR > BOOKS (stock does nothing with them there), the top right corner of that list
   for the label, and stock's arrangement writer, which it steps into at its entry: on book 1 stock writes arr01 to
   arr08 exactly as always, on another book that book's 8 files are written instead. For setlists: the arranger menu's
   CHANGE and CHAIN entries (their names, CHAIN's routine and icon), the operands of the menu title's index and format
@@ -113,8 +114,9 @@ unless you edit that arrangement.
 - **A project comes back where it was left.** A power cycle keeps the book in use (the Octatrack keeps its
   arrangements in battery memory). LOAD PROJECT returns to the book and arrangement of the last switch, SYNC TO CARD
   or SAVE PROJECT, and RELOAD PROJECT to those of the last SAVE PROJECT, as stock does for its own files: the module
-  keeps them in `arrbook.work` (and `arrbook.strd`). Stock first loads book 1; on another book the module then
-  switches as LEFT/RIGHT do, about two seconds after stock's load has finished. Without the module a project opens on
+  keeps them in `arrbook.work` (and `arrbook.strd`). Stock first loads book 1; once stock's load has finished, one card
+  job of the module's reads where the project was left and switches as LEFT/RIGHT do (and starts its setlist). Loading
+  another project, stock names the new project only once its load is over, so that job comes after the whole load. Without the module a project opens on
   book 1.
 - **Switch back to book 1 before removing the module.** Without the module, stock's next save writes whatever book is
   in its 8 slots into arr01 to arr08. Leaving book 1 always keeps a backup of it (`arr01.bak` to `arr08.bak`, stock
@@ -137,9 +139,17 @@ Original module by Andrey Sidorkin, MIT (LICENSE). No firmware, stock code or st
 
 ## Screens and audio
 
-![ARR > CHANGE on book 1](media/ot-change-book.png)
+![ARR > BOOKS on book 1](media/ot-books-list.png)
 
-Emulator capture (ot_emu), not the unit. No audio: the module makes no sound.
+![CUE + YES in ARR > BOOKS adds the arrangement to the open setlist](media/ot-books-added.png)
+
+![The SETLSTS page](media/ot-setlists-page.png)
+
+![The main screen while a setlist plays: its name in the Part box, its place on the pattern line, the next song on the chain line](media/ot-setlist-main.png)
+
+![CUE + YES on the main screen: the setlist, the playing song and the next one](media/ot-setlist-window.png)
+
+Emulator captures (ot_emu), not the unit. No audio: the module makes no sound.
 
 ## Develop
 
