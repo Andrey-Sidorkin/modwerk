@@ -181,6 +181,7 @@ struct as_state {
     int8_t sl_restart;       /* YES on the page while one plays: after ending, start again from this song; -1 none */
     uint8_t sl_n, sl_cur;    /* its songs, and the one playing (or chosen) */
     uint8_t sl_list;         /* the setlist playing (0 = 1) */
+    uint8_t foreign;         /* times a setlist slot held something other than its song when it was taken back */
     int8_t resume;           /* a load of a project left in a setlist: that setlist (0 = 1), started again once the load is
                               * done; -1 none */
     uint8_t resume_cur;      /* and the song it was on */
@@ -202,7 +203,7 @@ struct as_state {
 static struct as_state st;
 /* The last four project events, newest lowest (the diagnostic word's top half): 1 load begins, 2 load done, 3 reload
  * done, 4 save done, 5 arrbook read (then its book), 6 arrbook missing, 7 return posted, 8 refused, 9 switch done,
- * A write without a switch, B nothing to return to, C arranger mode went on, D it went off, E a new project,
+ * A write without a switch, B a setlist slot no longer held its song (not taken back), C arranger mode went on, D it went off, E a new project,
  * F the install handler fell back to book 1. */
 static uint32_t evlog;
 static void ev(unsigned code)
@@ -682,6 +683,14 @@ static void take_back(struct as_state *s, unsigned which)
 {
     unsigned k = s->song_at[which], slot = which ? SL_B : SL_A;
     if (k >= s->sl_n) return;
+    /* Still the song put there? Its name unchanged, and not emptied while it had rows. Anything else came into the slot
+     * from elsewhere (stock reloading the slots after a load, 23 November 2026: empty arrangements taken back as edits
+     * wiped songs 2-8 of a setlist): never kept as an edit, never written. A rename during a show is not kept either. */
+    int rows_now = rd8(work_at(slot) + 0x12) << 8 | rd8(work_at(slot) + 0x13);
+    int rows_put = s->songs[k][0x12] << 8 | s->songs[k][0x13];
+    int same = 1;
+    for (unsigned i = 0; i < NAME_LEN; ++i) if (rd8(work_at(slot) + i) != s->songs[k][i]) same = 0;
+    if (!same || (rows_put && !rows_now)) { ev(0xb); ++s->foreign; return; }
     for (uint32_t i = 0; i < BLOCK; ++i) {
         uint8_t v = rd8(work_at(slot) + i);
         if (v != s->songs[k][i]) { s->songs[k][i] = v; s->sl_edited |= (uint16_t)(1u << k); }
@@ -866,6 +875,16 @@ __asm__(
     "\tjmp 0x400915b4\n");
 #endif
 
+/* Stock replaces the slots (a load, a reload, a new project): a setlist playing ends in memory, nothing of it taken
+ * back or written (a reload drops unsaved edits anyway). Left running, the module took the arrangements stock reloads
+ * into slots 7 and 8 for its songs, as edited (the developer's MKI and ot_emu, 23 November 2026). A load comes back into
+ * the setlist afterwards (arrbook.work). */
+static void sl_drop(struct as_state *s)
+{
+    s->sl_active = 0; s->sl_req = -1; s->sl_go = 0; s->sl_end = 0; s->sl_restart = -1;
+    s->peek = 0; s->page = 0; s->reread = 0;
+}
+
 /* A project load or a new project: stock reads arr01-08 into the slots, so they hold book 1. */
 void as_project_load(void)
 {
@@ -883,10 +902,7 @@ void as_project_load(void)
      * byte stock applies when the load ends (LOAD clears it as it starts), so stock itself turns the mode back on.
      * The book is switched to once stock has finished. */
     for (unsigned b = 0; b < BOOKS; ++b) s->last[b] = 0;
-    s->page = 0;                                          /* another project's setlists: the page closes */
-    s->sl_active = 0;                                     /* stock replaces the slots: a setlist playing ends */
-    s->reread = 0;
-    s->sl_req = -1; s->sl_go = 0; s->sl_end = 0;
+    sl_drop(s);                                           /* stock replaces the slots: a setlist playing ends */
     int b = read_place(s);
     read_lists(s);
     s->restore = (int8_t)(b > 0 ? b : -1);
@@ -907,6 +923,7 @@ void as_project_new(void)
     s->backup = 0;
     s->damaged = 0;
     s->ready = 1;
+    sl_drop(s);                                           /* the slots are stock's again, in a load too */
     int loading = s->loading && s->since_hook < 3600;     /* LOAD and RELOAD run this step too (the developer's MKI) */
     s->loading = 0;
     s->since_hook = 0;
@@ -958,6 +975,7 @@ unsigned as_project_reloaded(void)
 {
     struct as_state *s = ready();
     ev(3);
+    sl_drop(s);                                           /* stock reloads the slots next */
     s->since_hook = 0;
     for (unsigned n = SLOTS + 1; n <= BOOKS * SLOTS; ++n) {
         arr_path(s->path, n, "strd");

@@ -815,6 +815,36 @@ int main(void)
     check("releasing CUE only closes it", text_at(4)[0] == 0 && cs1[W(7) + 100] == s2 && chain() == 7);
     stock_chain(); as_tick(0);
     check("past the first song the third plays, and it is the last: nothing chained", chosen == 7 && chain() == 0xffffffffu);
+    /* the developer's MKI, 23 November 2026: stock put other (empty) arrangements into slots 7 and 8 under a setlist; the
+     * arranger then ran through the chain. Nothing of that may be taken back as an edit or written to a song's file. */
+    change_window = 0x46c7d384u; as_tick(0); job(); change_window = 0; as_tick(0);
+    as_setlists_open(); tap(UP); tap(UP); tap(YES); job(); as_tick(0);              /* from the first song */
+    { uint8_t f0 = find("/SET/PROJ/arr11.work")->work[100], f1 = find("/SET/PROJ/arr02.work")->work[100], f2 = find("/SET/PROJ/arr05.work")->work[100];
+      memset(&cs1[W(6)], 0, BLOCK); memset(&cs1[W(7)], 0, BLOCK);   /* stock reloads the slots: empty arrangements */
+      stock_chain(); as_tick(0); stock_chain(); as_tick(0);          /* and runs through the chain */
+      int w = writes;
+      change_window = 0x46c7d384u; as_tick(0); job(); change_window = 0; as_tick(0);   /* the setlist ends */
+      check("slots emptied under a setlist: no song's file written when it ends", find("/SET/PROJ/arr11.work")->work[100] == f0 && find("/SET/PROJ/arr02.work")->work[100] == f1 && find("/SET/PROJ/arr05.work")->work[100] == f2);
+      check("only the book read back, nothing written", writes == w); }
+
+    /* RELOAD while a setlist plays (ot_emu, 23 November 2026): stock reloads the slots ~10 s later and the arranger runs
+     * on; the module must have let go of the setlist, take nothing back and write nothing, then come back into it */
+    change_window = 0x46c7d384u; as_tick(0); job(); change_window = 0; as_tick(0);
+    as_setlists_open(); tap(UP); tap(UP); tap(DOWN); tap(YES); job(); as_tick(0);   /* from song 2 */
+    job();                                            /* SAVE's sync: arrbook.work says setlist 1, song 2 */
+    as_project_stored();
+    { uint8_t f0 = find("/SET/PROJ/arr11.work")->work[100], f1 = find("/SET/PROJ/arr02.work")->work[100], f2 = find("/SET/PROJ/arr05.work")->work[100];
+      int w = writes;
+      as_project_reloaded(); as_project_new();
+      memset(&cs1[W(6)], 0, BLOCK); memset(&cs1[W(7)], 0, BLOCK);   /* stock's reload puts arr07/arr08 (empty) in */
+      stock_chain(); as_tick(0);
+      check("RELOAD in a setlist: it is let go at once, nothing taken back or written", writes == w && find("/SET/PROJ/arr11.work")->work[100] == f0 && find("/SET/PROJ/arr02.work")->work[100] == f1 && find("/SET/PROJ/arr05.work")->work[100] == f2);
+      mark(0x10); as_project_loaded();
+      int pp = posted; for (int i = 0; i < 400; ++i) as_tick(0);
+      check("then, the load over, the setlist starts again on song 2", posted == pp + 1);
+      job(); as_tick(0);
+      check("song 2 in slot 7 from its file, song 3 chained", chosen == 6 && cs1[W(6) + 100] == s1 && chain() == 7); }
+
     /* a project left in a setlist comes back into it after a load, on the song it was on */
     change_window = 0x46c7d384u; as_tick(0); job(); change_window = 0; as_tick(0);
     as_setlists_open(); tap(UP); tap(UP); tap(YES); job(); as_tick(0);              /* from the first song */
