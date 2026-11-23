@@ -13,6 +13,7 @@ void as_tick(void *api);
 void as_draw(unsigned char *frame);
 int as_writer(uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4);
 void as_setlists_open(void);
+void as_list_named(int ok);
 void as_project_load(void);
 void as_project_new(void);
 unsigned as_project_loaded(void);
@@ -53,6 +54,8 @@ static int closes, events;
 extern char as_chain_text[16];
 #define chain_text as_chain_text
 static int shared_writes;
+static char *named;                      /* the buffer stock's name editor was opened on */
+void host_name_edit(char *buffer) { named = buffer; }
 void host_post_event(void) { ++events; }
 static uint8_t list[16];             /* 0x400c0ba0: the CHANGE list's first row shown, then its cursor */
 static int failures, checks;
@@ -557,7 +560,7 @@ int main(void)
     { struct file *f = find("/SET/PROJ/arrlists.work"); check("nothing written before the next sync", !f); }
     job();
     { struct file *f = find("/SET/PROJ/arrlists.work");
-      check("the next sync writes arrlists.work: one song, book 1 arrangement 3, its name", f && !memcmp(f->work, "ASSL", 4) && f->work[8] == 1 && f->work[24] == 0 && f->work[25] == 2 && !memcmp(&f->work[26], "SONG C", 6)); }
+      check("the next sync writes arrlists.work: one song, book 1 arrangement 3, its name", f && !memcmp(f->work, "ASL2", 4) && f->work[8] == 1 && f->work[24] == 0 && f->work[25] == 2 && !memcmp(&f->work[26], "SONG C", 6)); }
     choose(5);
     as_key(CUE, 1); as_key(YES, 1); as_key(YES, 1); as_key(YES, 0); as_key(CUE, 0);   /* a held YES repeats */
     job();
@@ -650,6 +653,16 @@ int main(void)
     for (int i = 0; i < 5; ++i) tap(DOWN);
     page_draw();
     check("the cursor stops at the last song", lit(100, 25) && !lit(100, 32));
+    /* FUNC + YES: the setlist's name, in stock's name editor */
+    as_key(FUNC, 1);
+    check("FUNC + YES on the page is the page's", tap(YES) == 1);
+    as_key(FUNC, 0);
+    check("and opens stock's name editor on the setlist's name, the page closed", named != 0 && (page_draw(), ntexts == 0));
+    memcpy(named, "GIG 1          ", 16); named[15] = 0;   /* typed, padded with spaces as the editor does */
+    as_list_named(1); job();
+    as_setlists_open(); page_draw();
+    check("the page's title is its name", !strcmp(text_at(4), "GIG 1"));
+    check("kept in arrlists.work with the next sync", !memcmp(find("/SET/PROJ/arrlists.work")->work + 24 + 16 * 16 * 18, "GIG 1", 5));
     tap(UP); tap(UP); tap(DOWN);                     /* the cursor on song 2 of 3 */
     as_key(FUNC, 1); tap(REC); as_key(FUNC, 0);
     check("FUNC + REC copies the song under the cursor", !strcmp(last_message, "COPIED SONG"));
@@ -795,7 +808,7 @@ int main(void)
     check("and moves the > to the cursor", text_at(26)[0] == '>' && text_at(19)[0] == ' ');
     check("the third song is next at once, chained, before CUE is released", cs1[W(7) + 100] == s2 && chain() == 7);
     as_key(CUE, 0); page_draw();
-    check("releasing CUE only closes it", ntexts == 0 && cs1[W(7) + 100] == s2 && chain() == 7);
+    check("releasing CUE only closes it", text_at(4)[0] == 0 && cs1[W(7) + 100] == s2 && chain() == 7);
     stock_chain(); as_tick(0);
     check("past the first song the third plays, and it is the last: nothing chained", chosen == 7 && chain() == 0xffffffffu);
     /* the window open across a song change: the * and the > follow, unless a song was chosen with YES */
@@ -812,11 +825,22 @@ int main(void)
     stock_chain(); as_tick(0); page_draw();           /* but song 2 starts before CUE is released */
     check("song 3 was chosen at once, so song 3 starts: * on it, nothing after it", text_at(26)[0] == '*' && chain() == 0xffffffffu);
     as_key(CUE, 0);
+    page_draw();
+    check("while a setlist plays, the main screen's mark: its title and the song's place", !strcmp(text_at(58), "SETLIST 1 3/3"));
     yes_handler = 0;
+    page_draw();
+    check("no mark off the main screen", text_at(58)[0] == 0);
 
     as_project_load(); as_project_new(); mark(0x10); as_tick(0);
     { int sw = stock_writes; cs1[CHG] = 1; job();
       check("a project load ends it: the next save writes the book again", stock_writes == sw + 1); }
+    /* the first file format (no names, "ASSL") is still read */
+    { struct file *f = find("/SET/PROJ/arrlists.work");
+      memcpy(f->work, "ASSL", 4); memset(f->work + 24 + 16 * 16 * 18, 'X', 256);
+      as_project_load(); as_project_new(); job();
+      as_setlists_open(); page_draw();
+      check("a setlists file of the first format keeps its songs, the names empty", text_at(12)[0] != 0 && !strncmp(text_at(4), "SETLIST", 7));
+      tap(NO); }
 
     check("stock's CHAIN ARR. %d text (and its shared %d) was never written", shared_writes == 0);
     printf("%d checks, %d failed\n", checks, failures);

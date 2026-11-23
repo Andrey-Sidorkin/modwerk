@@ -120,12 +120,14 @@ static void wr32(uint32_t a, uint32_t v) { wr8(a, v >> 24); wr8(a + 1, v >> 16);
 #define NAME_LEN 16u
 struct sl_entry { uint8_t book, slot; char name[NAME_LEN]; };
 struct sl_lists {
-    uint8_t magic[4];        /* "ASSL" */
+    uint8_t magic[4];        /* "ASL2" ("ASSL": the same without the names, still read) */
     uint8_t open;            /* the setlist CUE + YES adds to, 0 = 1 */
     uint8_t reserved[3];
     uint8_t count[LISTS];
     struct sl_entry e[LISTS][LIST_LEN];
+    char name[LISTS][16];    /* stock's name editor's (15 characters and its end); empty: "SETLIST n" */
 };
+#define LISTS_V1_BYTES (8u + LISTS + LISTS * LIST_LEN * sizeof (struct sl_entry))
 
 struct as_state {
     uint32_t magic;
@@ -548,7 +550,7 @@ static void sl_names(struct as_state *s)
 static void write_lists(struct as_state *s)
 {
     if (!s->lists_dirty) return;
-    s->lists.magic[0] = 'A'; s->lists.magic[1] = 'S'; s->lists.magic[2] = 'S'; s->lists.magic[3] = 'L';
+    s->lists.magic[0] = 'A'; s->lists.magic[1] = 'S'; s->lists.magic[2] = 'L'; s->lists.magic[3] = '2';
     lists_path(s->path, "work");
     if (put_data(s, &s->lists, sizeof s->lists)) s->lists_dirty = 0;
 }
@@ -556,8 +558,14 @@ static void read_lists(struct as_state *s)
 {
     lists_path(s->path, "work");
     int ok = get_data(s, &s->lists, sizeof s->lists)
-        && s->lists.magic[0] == 'A' && s->lists.magic[1] == 'S' && s->lists.magic[2] == 'S' && s->lists.magic[3] == 'L'
-        && s->lists.open < LISTS;
+        && s->lists.magic[0] == 'A' && s->lists.magic[1] == 'S' && s->lists.magic[2] == 'L' && s->lists.magic[3] == '2';
+    if (!ok) {                                            /* the first format, without names */
+        ok = get_data(s, &s->lists, LISTS_V1_BYTES)
+            && s->lists.magic[0] == 'A' && s->lists.magic[1] == 'S' && s->lists.magic[2] == 'S' && s->lists.magic[3] == 'L';
+        for (unsigned l = 0; l < LISTS; ++l) for (unsigned i = 0; i < 16u; ++i) s->lists.name[l][i] = 0;
+    }
+    ok = ok && s->lists.open < LISTS;
+    for (unsigned l = 0; ok && l < LISTS; ++l) s->lists.name[l][15] = 0;
     for (unsigned l = 0; ok && l < LISTS; ++l) {
         if (s->lists.count[l] > LIST_LEN) ok = 0;
         for (unsigned i = 0; ok && i < s->lists.count[l]; ++i)
@@ -1010,6 +1018,36 @@ static void move_arr(struct as_state *s, int dir)
 }
 
 #define PAGE_ROWS 7u
+#define NAME_EDIT 0x4007e664u        /* stock's name editor (len, title, buffer, 1, done(ok)): RENAME's (0x40049c88) */
+
+/* A setlist's title: its name, or "SETLIST n" without one. */
+static char *list_title(const struct as_state *s, char *t, unsigned l)
+{
+    const char *n = s->lists.name[l];
+    unsigned k = 0;
+    while (k < 15u && n[k]) ++k;
+    while (k && n[k - 1] == ' ') --k;                       /* the editor pads with spaces */
+    if (!k) { t = put_text(t, "SETLIST "); return put_num(t, l + 1u); }
+    for (unsigned i = 0; i < k; ++i) *t++ = n[i];
+    return t;
+}
+
+/* Stock's name editor is done with a setlist's name: kept with the next sync. */
+void as_list_named(int ok)
+{
+    struct as_state *s = ready();
+    if (ok) s->lists_dirty = 1;
+}
+#ifdef AS_HOST
+void host_name_edit(char *buffer);
+static void name_edit(char *buffer) { host_name_edit(buffer); }
+#else
+static void name_edit(char *buffer)
+{
+    static const char title[] = "SETLIST NAME";
+    ((void (*)(int, const char *, char *, int, void (*)(int)))NAME_EDIT)(15, title, buffer, 1, as_list_named);
+}
+#endif
 
 /* The Arranger menu's fourth item (CHAIN in stock): its YES opens the SETLSTS page (manifest.py's SymbolRef). */
 void as_setlists_open(void)
@@ -1098,8 +1136,9 @@ static int page_key(struct as_state *s, int code, int pressed)
         sl_remove(s, l, s->page_cur);
         if (s->page_cur && s->page_cur >= s->lists.count[l]) --s->page_cur;
         break;
-    case K_YES:                                                /* the setlist from this song */
-        if (!n) break;
+    case K_YES:
+        if (s->func_down) { s->page = 0; name_edit(s->lists.name[l]); break; }   /* FUNC + YES: its name */
+        if (!n) break;                                         /* YES: the setlist from this song */
         if (!stopped()) { message("STOP TO START"); break; }
         if (s->sl_active) { s->sl_end = 1; s->sl_restart = (int8_t)s->page_cur; post_write(); s->page = 0; break; }
         {
@@ -1406,8 +1445,7 @@ static void draw_page(struct as_state *s, unsigned char *frame)
     for (int x = 23; x <= 102; ++x) { put(frame, x, 2, 1); put(frame, x, 61, 1); put(frame, x + 1, 62, 1); }
     if (s->lists_unread) { text(frame, 25, 4, "SETLISTS"); invert(frame, 24, 3, 101, 9); text(frame, 25, 12, "READING..."); return; }
     unsigned l = s->lists.open, n = s->lists.count[l];
-    char line[24], *t = put_text(line, "SETLIST ");
-    t = put_num(t, l + 1);
+    char line[24], *t = list_title(s, line, l);
     *t = 0;
     text(frame, 25, 4, line);
     t = put_num(line, n); t = put_text(t, "/16"); *t = 0;
@@ -1433,8 +1471,7 @@ static void draw_peek(struct as_state *s, unsigned char *frame)
     for (int y = 2; y <= 61; ++y) { put(frame, 23, y, 1); put(frame, 102, y, 1); put(frame, 103, y + 1, 1); }
     for (int x = 23; x <= 102; ++x) { put(frame, x, 2, 1); put(frame, x, 61, 1); put(frame, x + 1, 62, 1); }
     unsigned n = s->sl_n, cur = s->sl_cur, nx = s->peek_next, cs = s->peek_cur;
-    char line[24], *t = put_text(line, "SETLIST ");
-    t = put_num(t, s->sl_list + 1u);
+    char line[24], *t = list_title(s, line, s->sl_list);
     *t = 0;
     text(frame, 25, 4, line);
     t = put_num(line, cur + 1u); *t++ = '/'; t = put_num(t, n); *t = 0;
@@ -1455,10 +1492,26 @@ static void draw_peek(struct as_state *s, unsigned char *frame)
     }
 }
 
+/* While a setlist plays, on the main screen: its name and the song's place ("GIG 1 2/5"), white on black at the bottom
+ * right, under the arranger rows. */
+static void draw_mark(struct as_state *s, unsigned char *frame)
+{
+    char line[28], *t = list_title(s, line, s->sl_list);
+    *t++ = ' ';
+    t = put_num(t, s->sl_cur + 1u); *t++ = '/'; t = put_num(t, s->sl_n);
+    *t = 0;
+    int w = 4 * (int)(t - line) + 3, x0 = 127 - w;
+    for (int y = 57; y <= 63; ++y) for (int x = x0; x <= 127; ++x) put(frame, x, y, 0);   /* row 002's text ends at 56 */
+    text(frame, x0 + 2, 58, line);
+    invert(frame, x0, 57, 127, 63);
+}
+
 void as_draw(unsigned char *frame)
 {
     struct as_state *s = ready();
     if (s->peek) { draw_peek(s, frame); return; }
+    if (s->sl_active && !s->sl_go && !s->page && !rd32(CHANGE_WINDOW) && rd32(KEYS + K_YES * 0x18u) == MAIN_YES)
+        draw_mark(s, frame);
     if (s->page) { draw_page(s, frame); return; }
     if (!rd32(CHANGE_WINDOW)) return;
     static const uint8_t book[4] = {G_B, G_O, G_O, G_K}, list[4] = {G_L, G_I, G_S, G_T};
