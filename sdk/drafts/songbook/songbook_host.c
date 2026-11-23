@@ -649,7 +649,7 @@ int main(void)
     check("nothing of the page before it is opened", ntexts == 0);
     as_setlists_open();
     page_draw();
-    check("the page: SETLIST 1 and its count on the title row", !strcmp(text_at(4), "SETLIST 1") && !strcmp(texts[1].t, "4/16"));
+    check("the page: SETLIST 1 and its count on the title row", !strcmp(text_at(4), "1:SETLIST 1") && !strcmp(texts[1].t, "4/16"));
     check("its songs as book.arrangement and name", !strcmp(text_at(12), "1.4 INTRO") && !strcmp(text_at(19), "1.1 SONG A") && !strcmp(text_at(26), "1.5 SONG E") && !strcmp(text_at(33), "1.8 SONG H"));
     check("the title row inverted, the first song under the cursor too", lit(60, 3) && lit(100, 11) && !lit(100, 18));
     check("UP/DOWN are the page's; PLAY stays stock's", tap(DOWN) == 1 && tap(UP) == 1 && tap(PLAY) == 0);
@@ -672,7 +672,7 @@ int main(void)
     memcpy(named, "GIG 1          ", 16); named[15] = 0;   /* typed, padded with spaces as the editor does */
     as_list_named(1); job();
     as_setlists_open(); page_draw();
-    check("the page's title is its name", !strcmp(text_at(4), "GIG 1"));
+    check("the page's title is its number and name", !strcmp(text_at(4), "1:GIG 1"));
     check("kept in arrlists.work with the next sync", !memcmp(find("/SET/PROJ/arrlists.work")->work + 24 + 16 * 16 * 18, "GIG 1", 5));
     tap(UP); tap(UP); tap(DOWN);                     /* the cursor on song 2 of 3 */
     as_key(FUNC, 1); tap(REC); as_key(FUNC, 0);
@@ -691,7 +691,7 @@ int main(void)
     for (int i = 0; i < 3; ++i) { as_key(FUNC, 1); tap(PLAY); as_key(FUNC, 0); }   /* setlist 2 empty again */
     job(); tap(LEFT);
     tap(RIGHT); page_draw();
-    check("RIGHT shows setlist 2, empty", !strcmp(text_at(4), "SETLIST 2") && !strcmp(text_at(12), "EMPTY"));
+    check("RIGHT shows setlist 2, empty", !strcmp(text_at(4), "2:SETLIST 2") && !strcmp(text_at(12), "EMPTY"));
     tap(NO); page_draw();
     check("NO closes the page", ntexts == 0);
     change_window = 0x46c7d384u; choose(1);
@@ -712,7 +712,7 @@ int main(void)
       as_setlists_open(); page_draw();
       check("the page meanwhile says READING", !strcmp(text_at(12), "READING...") && posted == pp + 1);
       job(); page_draw();
-      check("once read, the page shows setlist 2 with its ten songs", !strcmp(text_at(4), "SETLIST 2") && !strcmp(texts[1].t, "10/16"));
+      check("once read, the page shows setlist 2 with its ten songs", !strcmp(text_at(4), "2:SETLIST 2") && !strcmp(texts[1].t, "10/16"));
       tap(NO); }
     as_project_load(); page_draw();
     check("a project load closes the page", ntexts == 0);
@@ -811,7 +811,7 @@ int main(void)
     as_key(CUE, 1);
     check("CUE + YES on the main screen opens the playing setlist", tap(YES) == 1);
     page_draw();
-    check("its title; the cursor on the song playing; the next marked >", !strcmp(text_at(4), "SETLIST 1") && !strcmp(texts[1].t, "1/3") && lit(100, 11) && text_at(19)[0] == '>');
+    check("its title; the cursor on the song playing; the next marked >", !strcmp(text_at(4), "1:SETLIST 1") && !strcmp(texts[1].t, "1/3") && lit(100, 11) && text_at(19)[0] == '>');
     check("the opening YES moved nothing", text_at(19)[0] == '>');
     tap(DOWN); tap(DOWN); page_draw();
     check("UP/DOWN move the cursor only: the third row inverted, the > still on the second, * on the first", lit(100, 25) && !lit(100, 11) && text_at(19)[0] == '>' && text_at(12)[0] == ' ' && lit(25, 14) && lit(27, 14) && !lit(28, 14) && text_at(26)[0] == ' ');
@@ -1009,7 +1009,7 @@ int main(void)
       memcpy(f->work, "ASSL", 4); memset(f->work + 24 + 16 * 16 * 18, 'X', 256);
       as_project_load(); as_project_new(); job();
       as_setlists_open(); page_draw();
-      check("a setlists file of the first format keeps its songs, the names empty", text_at(12)[0] != 0 && !strncmp(text_at(4), "SETLIST", 7));
+      check("a setlists file of the first format keeps its songs, the names empty", text_at(12)[0] != 0 && !strncmp(text_at(4), "1:SETLIST", 9));
       tap(NO); }
 
     check("stock's CHAIN ARR. %d text (and its shared %d) was never written", shared_writes == 0);
@@ -1051,6 +1051,19 @@ int main(void)
       check("back in A from B: one card job of the module's", posted == pp + 1);
       job(); for (int i = 0; i < 700; ++i) as_tick(0);
       check("which brings back A's book 2 and its setlist on song 2, and no second job", book() == bk && chosen == 6 && chain() == 7 && posted == pp + 1); }
+
+    /* An unnamed setlist's name is SETLIST n: stock's editor opens on it, to be deleted for another (the developer's MKI,
+     * 24 November 2026); the title row shows the setlist's number before its name, cut to fit */
+    { uint32_t y = yes_handler; yes_handler = 0;
+      as_setlists_open(); for (int i = 0; i < 4; ++i) tap(RIGHT);   /* setlist 5, never named */
+      page_draw();
+      check("an unnamed setlist's title row: 5:SETLIST 5", !strcmp(text_at(4), "5:SETLIST 5"));
+      named = 0; as_key(FUNC, 1); tap(YES); as_key(FUNC, 0);
+      check("FUNC + YES opens stock's editor on SETLIST 5", named && !strcmp(named, "SETLIST 5"));
+      memcpy(named, "GIG IN KYIV 2026", 15); named[15] = 0; as_list_named(1); job();
+      as_setlists_open(); page_draw();
+      check("a 15-letter name cut where the count needs the room", !strncmp(text_at(4), "5:GIG IN KYIV", 13) && strlen(text_at(4)) <= 14u);
+      tap(NO); yes_handler = y; as_tick(0); }
 
     printf("%d checks, %d failed\n", checks, failures);
     return failures != 0;

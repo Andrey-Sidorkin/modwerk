@@ -1231,6 +1231,23 @@ static char *list_title(const struct as_state *s, char *t, unsigned l)
     return t;
 }
 
+/* A setlist's title row (the page, the main screen's window): its number, then its name, cut where the right-hand count
+ * needs the room (x 25 to 101, 4 pixels a character). */
+static void title_row(const struct as_state *s, unsigned char *frame, unsigned l, const char *right);
+/* An unnamed setlist's name, SETLIST 1 and so on, put into the name itself before stock's editor opens on it: the
+ * musician deletes it to type another (the developer's MKI, 24 November 2026). */
+static void default_name(struct as_state *s, unsigned l)
+{
+    char *n = s->lists.name[l];
+    unsigned k = 0;
+    while (k < 15u && n[k]) ++k;
+    while (k && n[k - 1] == ' ') --k;
+    if (k) return;
+    char *t = put_text(n, "SETLIST ");
+    t = put_num(t, l + 1u);
+    *t = 0;
+}
+
 /* Stock's name editor is done with a setlist's name: kept with the next sync. */
 void as_list_named(int ok)
 {
@@ -1359,6 +1376,7 @@ static int page_key_(struct as_state *s, int code, int pressed)
             s->page = 0;                                       /* where no key reaches the module: CUE or FUNC */
             s->cue_down = 0;                                   /* released there would stay held (the developer's */
             s->func_down = 0;                                  /* MKI, 24 November 2026: LEFT/RIGHT moved songs) */
+            default_name(s, l);
             name_edit(s->lists.name[l]);
             break;
         }
@@ -1723,6 +1741,22 @@ static void label(unsigned char *frame, int top, const uint8_t word[4], unsigned
  * adds to) at the bottom right. */
 /* The SETLSTS page, in a window where stock's lists open: "SETLIST 3" and its song count on an inverted title row,
  * then seven songs as "book.arrangement name" ("2.5 SONG CHARLIE"), the cursor's row inverted. */
+static void title_row(const struct as_state *s, unsigned char *frame, unsigned l, const char *right)
+{
+    unsigned r = 0;
+    while (right[r]) ++r;
+    char line[24], name[24], *t = put_num(line, l + 1u);
+    *t++ = ':';
+    unsigned k = (unsigned)(list_title(s, name, l) - name);
+    unsigned room = 19u - r - 1u - (unsigned)(t - line);  /* 19 characters, a space before the count */
+    if (k > room) k = room;
+    for (unsigned i = 0; i < k; ++i) *t++ = name[i];
+    *t = 0;
+    text(frame, 25, 4, line);
+    text(frame, 101 - 4 * (int)r, 4, right);
+    invert(frame, 24, 3, 101, 9);
+}
+
 static void draw_page(struct as_state *s, unsigned char *frame)
 {
     for (int y = 2; y <= 62; ++y) for (int x = 23; x <= 103; ++x) put(frame, x, y, 0);
@@ -1730,12 +1764,9 @@ static void draw_page(struct as_state *s, unsigned char *frame)
     for (int x = 23; x <= 102; ++x) { put(frame, x, 2, 1); put(frame, x, 61, 1); put(frame, x + 1, 62, 1); }
     if (s->lists_unread) { text(frame, 25, 4, "SETLISTS"); invert(frame, 24, 3, 101, 9); text(frame, 25, 12, "READING..."); return; }
     unsigned l = s->lists.open, n = s->lists.count[l];
-    char line[24], *t = list_title(s, line, l);
-    *t = 0;
-    text(frame, 25, 4, line);
-    t = put_num(line, n); t = put_text(t, "/16"); *t = 0;
-    text(frame, 101 - 4 * (int)(t - line), 4, line);
-    invert(frame, 24, 3, 101, 9);
+    char line[24], *t = put_num(line, n);
+    t = put_text(t, "/16"); *t = 0;
+    title_row(s, frame, l, line);
     if (!n) { text(frame, 25, 12, "EMPTY"); return; }
     for (unsigned r = 0; r < PAGE_ROWS && s->page_top + r < n; ++r) {
         const struct sl_entry *e = &s->lists.e[l][s->page_top + r];
@@ -1757,12 +1788,9 @@ static void draw_peek(struct as_state *s, unsigned char *frame)
     for (int y = 2; y <= 61; ++y) { put(frame, 23, y, 1); put(frame, 102, y, 1); put(frame, 103, y + 1, 1); }
     for (int x = 23; x <= 102; ++x) { put(frame, x, 2, 1); put(frame, x, 61, 1); put(frame, x + 1, 62, 1); }
     unsigned n = s->sl_n, cur = s->sl_cur, nx = s->peek_next, cs = s->peek_cur;
-    char line[24], *t = list_title(s, line, s->sl_list);
-    *t = 0;
-    text(frame, 25, 4, line);
-    t = put_num(line, cur + 1u); *t++ = '/'; t = put_num(t, n); *t = 0;
-    text(frame, 101 - 4 * (int)(t - line), 4, line);
-    invert(frame, 24, 3, 101, 9);
+    char line[24], *t = put_num(line, cur + 1u);
+    *t++ = '/'; t = put_num(t, n); *t = 0;
+    title_row(s, frame, s->sl_list, line);
     unsigned top = cs >= PAGE_ROWS ? cs - PAGE_ROWS + 1u : 0;
     for (unsigned r = 0; r < PAGE_ROWS && top + r < n; ++r) {
         unsigned k = top + r;
@@ -1785,14 +1813,11 @@ static void draw_peek(struct as_state *s, unsigned char *frame)
  * song's place ("2/6"). */
 static void draw_mark(struct as_state *s, unsigned char *frame, unsigned list, unsigned cur, unsigned count)
 {
-    char a[8], b[8], *t;
-    const char *n = s->lists.name[list];
-    unsigned k = 0;
-    while (k < 15u && n[k]) ++k;
-    while (k && n[k - 1] == ' ') --k;
+    char a[8], b[8], nm[24], *t;
+    const char *n = nm;
+    unsigned k = (unsigned)(list_title(s, nm, list) - nm);   /* its name, or SETLIST 1 and so on */
     a[0] = b[0] = 0;
-    if (!k) { t = put_text(a, "LIST "); t = put_num(t, list + 1u); *t = 0; }
-    else {
+    {
         unsigned cut = k <= 7u ? k : 7u;
         if (k > 7u) for (unsigned i = 7u; i > 0; --i)        /* at a space, when the rest then fits the second line */
             if (n[i] == ' ') { if (k - i - 1u <= 7u) cut = i; break; }
