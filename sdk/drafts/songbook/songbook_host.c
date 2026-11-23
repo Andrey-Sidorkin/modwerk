@@ -733,6 +733,17 @@ int main(void)
     check("the book back in its slots: slots 7 and 8 its own again, the edit in slot 2", cs1[W(6) + 100] == b7 && cs1[W(7) + 100] == b8 && cs1[W(1) + 200] == edited && cs1[CHG] == 0);
     check("songs not edited are not written", find("/SET/PROJ/arr11.work")->work[100] == s0 && chain() == 0xffffffffu);
     change_window = 0;
+    /* installed again while a setlist plays: slots 7 and 8 hold its songs; nothing of them is written, the book read */
+    as_setlists_open(); tap(UP); tap(UP); tap(YES); job(); as_tick(0);
+    check("a setlist playing again: its songs in slots 7 and 8, the record says so", cs1[W(6) + 100] == s0 && rec[7] == 1);
+    as_host_reinstall(); as_modules_ready();
+    { int w = writes, sw = stock_writes, pp = posted; as_tick(0);
+      check("installed again: a card job is posted to read the book back", posted == pp + 1);
+      job(); as_tick(0);
+      check("and it reads the book, slots 7 and 8 its own again, writing nothing", writes == w && stock_writes == sw && cs1[W(6) + 100] == b7 && cs1[W(7) + 100] == b8 && rec[7] == 0); }
+    { int sw = stock_writes; cs1[CHG] = 1; job();
+      check("after it the book is written as usual", stock_writes == sw + 1); }
+
     /* a song whose file does not read: the setlist does not start, the book stays */
     fail_read_path = "/SET/PROJ/arr11.work";
     as_setlists_open(); tap(YES); job(); as_tick(0);

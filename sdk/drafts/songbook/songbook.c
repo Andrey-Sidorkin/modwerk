@@ -156,6 +156,9 @@ struct as_state {
     uint8_t lists_dirty;     /* changed since written: the card task writes them with the next sync */
     uint8_t lists_unread;    /* installed into an open project: arrlists.work not read yet (the next card job reads it) */
     uint8_t lists_req;       /* a card job posted only to read them */
+    uint8_t reread_posted;
+    uint8_t reread;          /* installed while a setlist played (the record says so): slots 7 and 8 hold its songs, not
+                              * the book's; the next card job reads the book again and writes none of it */
     uint8_t cue_down;        /* CUE held: YES adds to the setlist, LEFT/RIGHT move an arrangement in the book */
     uint8_t cue_yes;         /* a YES taken with CUE: its release is ours too */
     char msg[24];            /* the text of the module's last message box (stock may draw it again later) */
@@ -376,6 +379,7 @@ static void remember(struct as_state *s)
     wr8(RECORD + 4, s->book);
     wr8(RECORD + 5, s->backup);
     wr8(RECORD + 6, s->damaged);                         /* a book read only in part: kept through a reload (#1737) */
+    wr8(RECORD + 7, (uint8_t)(s->sl_active || s->reread));   /* slots 7 and 8 hold setlist songs */
     wr32(RECORD + 8, slots_sum());
 }
 
@@ -701,6 +705,19 @@ int as_writer(uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4)
     struct as_state *s = ready();
     if (s->lists_unread) read_lists(s);                   /* installed into an open project: its setlists first */
     if (s->lists_req) { s->lists_req = 0; s->hush = 1; }
+    if (s->reread) {                                      /* installed while a setlist played: the book back, unwritten */
+        s->hush = 1;
+        int ok = read_book(s, s->book, "work");
+        wr8(CHANGED, 0);
+        s->reread = 0;
+        s->reread_posted = 0;
+        s->damaged = (uint8_t)!ok;
+        if (!ok) s->failed = 1;
+        s->redraw = 1;
+        write_lists(s);
+        remember(s);
+        return 0;
+    }
     if (s->sl_active) {                                   /* slots 7 and 8 hold setlist songs: no book file written */
         if (s->sl_end) {
             s->hush = 1;
@@ -806,6 +823,7 @@ void as_project_load(void)
     for (unsigned b = 0; b < BOOKS; ++b) s->last[b] = 0;
     s->page = 0;                                          /* another project's setlists: the page closes */
     s->sl_active = 0;                                     /* stock replaces the slots: a setlist playing ends */
+    s->reread = 0;
     s->sl_req = -1; s->sl_go = 0; s->sl_end = 0;
     int b = read_place(s);
     read_lists(s);
@@ -838,7 +856,7 @@ void as_project_new(void)
     for (unsigned b = 0; b < BOOKS; ++b) s->last[b] = 0;
     sl_clear(s);                                          /* a new project has no setlists */
     s->page = 0;
-    s->sl_active = 0; s->sl_req = -1; s->sl_go = 0; s->sl_end = 0;
+    s->sl_active = 0; s->sl_req = -1; s->sl_go = 0; s->sl_end = 0; s->reread = 0;
 }
 
 /* Stock has read the banks; it reads arr01-08 next, so the slots will hold book 1. Where the project was left is read
@@ -918,6 +936,8 @@ unsigned as_modules_ready(void)
         /* The book in the slots was read only in part: still write back only what is edited, after a reinstall or
          * after another build's trial (the owner's review, #1737). */
         s->damaged = (uint8_t)(rd8(RECORD + 6) == 1);
+        /* A setlist was playing: slots 7 and 8 are its songs. Nothing of them is written; the book is read again. */
+        if (rd8(RECORD + 7) == 1) s->reread = 1;
     } else { s->book = 0; ev(0xf); }
     remember(s);
     return 0;
@@ -1192,6 +1212,7 @@ void as_tick(void *api)
             if (post_write() < 0) s->sl_end = 0;            /* busy: again next frame */
         }
     }
+    if (s->reread && s->pending < 0 && !s->reread_posted && stopped() && post_write() >= 0) s->reread_posted = 1;
     if (s->failed) { s->failed = 0; message("BOOK FILE ERROR"); }
     if (s->book && s->pending < 0 && ++s->ticks >= 120) { s->ticks = 0; remember(s); }
 }
