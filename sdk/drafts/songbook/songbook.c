@@ -110,7 +110,7 @@ static void wr8(uint32_t a, uint32_t v) { *(volatile uint8_t *)a = (uint8_t)v; }
 static uint32_t rd32(uint32_t a) { return (uint32_t)rd8(a) << 24 | (uint32_t)rd8(a + 1) << 16 | (uint32_t)rd8(a + 2) << 8 | rd8(a + 3); }
 static void wr32(uint32_t a, uint32_t v) { wr8(a, v >> 24); wr8(a + 1, v >> 16); wr8(a + 2, v >> 8); wr8(a + 3, v); }
 
-#define MAGIC 0x41535334u /* "ASS4": card builds do not zero .bss; a new layout, a new mark */
+#define MAGIC 0x41535335u /* "ASS5": card builds do not zero .bss; the size beside it catches a layout change */
 
 /* Setlists: 16 of up to 16 songs, each a book, its slot and the name it had (arrlists.work). */
 #define LISTS 16u
@@ -127,6 +127,7 @@ struct sl_lists {
 
 struct as_state {
     uint32_t magic;
+    uint32_t size;           /* sizeof (struct as_state) when it was set up: another layout starts afresh */
     uint8_t book;            /* the book in the slots, 0 = book 1 */
     int8_t pending;          /* the book a posted write job loads, -1 none */
     uint8_t failed;          /* the card task could not finish a switch: the UI task says so */
@@ -204,10 +205,11 @@ void as_host_back_memory(void) { st = saved_st; }     /* ... and this one comes 
 static struct as_state *ready(void)
 {
     struct as_state *s = st_at;
-    if (s->magic == MAGIC) return s;
+    if (s->magic == MAGIC && s->size == sizeof *s) return s;
     uint8_t *p = (uint8_t *)s;
     for (unsigned i = 0; i < sizeof *s; ++i) p[i] = 0;
     s->magic = MAGIC;
+    s->size = sizeof *s;
     s->pending = -1;
     evlog = rd32(RECORD + 16);                           /* the events before a power cycle */
     s->restore = -1;
