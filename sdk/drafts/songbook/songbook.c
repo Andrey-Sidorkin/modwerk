@@ -1492,18 +1492,19 @@ static void draw_peek(struct as_state *s, unsigned char *frame)
     }
 }
 
-/* While a setlist plays, on the main screen: its name and the song's place ("GIG 1 2/5"), white on black at the bottom
- * right, under the arranger rows. */
+/* While a setlist plays, on the main screen: a list sign and the song's place ("2/5"), white on black in the Part box's
+ * free second line (x 17-40, beside its wave icon), so none of the four arrangement rows is covered. The name is on
+ * the SETLSTS page and in the CUE + YES window. */
 static void draw_mark(struct as_state *s, unsigned char *frame)
 {
-    char line[28], *t = list_title(s, line, s->sl_list);
-    *t++ = ' ';
-    t = put_num(t, s->sl_cur + 1u); *t++ = '/'; t = put_num(t, s->sl_n);
+    char line[8], *t = put_num(line, s->sl_cur + 1u);
+    *t++ = '/';
+    t = put_num(t, s->sl_n);
     *t = 0;
-    int w = 4 * (int)(t - line) + 3, x0 = 127 - w;
-    for (int y = 57; y <= 63; ++y) for (int x = x0; x <= 127; ++x) put(frame, x, y, 0);   /* row 002's text ends at 56 */
-    text(frame, x0 + 2, 58, line);
-    invert(frame, x0, 57, 127, 63);
+    for (int y = 40; y <= 46; ++y) for (int x = 17; x <= 40; ++x) put(frame, x, y, 0);
+    for (int r = 0; r < 5; r += 2) for (int x = 18; x <= 20; ++x) put(frame, x, 41 + r, 1);   /* the list sign */
+    text(frame, 41 - 4 * (int)(t - line), 41, line);           /* right-aligned */
+    invert(frame, 17, 40, 40, 46);
 }
 
 void as_draw(unsigned char *frame)

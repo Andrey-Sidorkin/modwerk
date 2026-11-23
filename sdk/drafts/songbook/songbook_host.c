@@ -826,10 +826,10 @@ int main(void)
     check("song 3 was chosen at once, so song 3 starts: * on it, nothing after it", text_at(26)[0] == '*' && chain() == 0xffffffffu);
     as_key(CUE, 0);
     page_draw();
-    check("while a setlist plays, the main screen's mark: its title and the song's place", !strcmp(text_at(58), "SETLIST 1 3/3"));
+    check("while a setlist plays, the main screen's mark in the Part box: the song's place", !strcmp(text_at(41), "3/3") && lit(30, 40) && !lit(18, 41));
     yes_handler = 0;
     page_draw();
-    check("no mark off the main screen", text_at(58)[0] == 0);
+    check("no mark off the main screen", text_at(41)[0] == 0);
 
     as_project_load(); as_project_new(); mark(0x10); as_tick(0);
     { int sw = stock_writes; cs1[CHG] = 1; job();
