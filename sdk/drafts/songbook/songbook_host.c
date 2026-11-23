@@ -47,7 +47,7 @@ static uint8_t chosen;               /* 0x100b14d1: the arrangement chosen */
 static uint8_t arr_mode;             /* 0x460d1aec's low byte: arranger mode */
 static uint8_t mode_wanted;          /* 0x80000010: the mode stock applies when a load ends */
 static uint8_t msg_up;               /* 0x460d1e70's low byte: a message box is open */
-static int closes;
+static int closes, redraws;
 static uint8_t list[16];             /* 0x400c0ba0: the CHANGE list's first row shown, then its cursor */
 static int failures, checks;
 
@@ -74,6 +74,7 @@ void host_wr8(uint32_t a, uint8_t v)
     if (a == 0x80000010u) { mode_wanted = v; return; }
     if (a >= 0x400c0ba0u && a < 0x400c0bb0u) { list[a - 0x400c0ba0u] = v; return; }
     if (a >= 0x80006694u && a < 0x80006698u) { misc[a - 0x80004f00u] = v; return; }   /* stock's CHAIN */
+    if (a >= 0x46c7c72cu && a < 0x46c7c730u) { if (v) ++redraws; return; }            /* stock's redraw flag */
     fprintf(stderr, "write of 0x%08x\n", a);
 }
 
@@ -687,6 +688,9 @@ int main(void)
     stock_chain(); as_tick(0);
     check("past the first song: the third into the freed slot 7, chained", chosen == 7 && cs1[W(6) + 100] == s2 && chain() == 6);
     memset(&misc[0x80006694u - 0x80004f00u], 0xff, 4); as_tick(0);   /* something clears the chain mid-song */
+    { int r0 = redraws;
+      memset(&misc[0x80006694u - 0x80004f00u], 0xff, 4); as_tick(0);
+      check("and the screen is asked to draw again, so the rows show NEXT SONG", chain() == 6 && redraws > r0); }
     check("a chain cleared while a song plays is set again the next frame", chain() == 6 && cs1[W(6) + 100] == s2);
     cs1[W(7) + 200] ^= 0xff;                         /* the second song edited while it plays */
     uint8_t edited = cs1[W(7) + 200];

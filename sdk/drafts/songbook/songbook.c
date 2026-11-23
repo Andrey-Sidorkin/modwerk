@@ -72,6 +72,7 @@
 #define ARR_MODE_ON 0x4005200cu      /* stock's switch into arranger mode (FUNC + PATTERN's, 0x4006103e); nothing if on */
 #define LIST_TOP 0x400c0ba0u         /* ARR > CHANGE: the first row shown */
 #define LIST_CURSOR 0x400c0ba4u      /* ARR > CHANGE: the cursor's row (stock opens the list with it on the choice) */
+#define REDRAW 0x46c7c72cu          /* stock's "draw the screen again" flag (set at 0x40048f06; pattern-sample-locks sets it too) */
 #define CHAIN 0x80006694u           /* stock's CHAIN: the slot the arranger moves to past its last row, -1 none (0x4004a7e2) */
 #define LIST_CHOICE 0x400c0ba8u      /* ARR > CHANGE: the arrangement under the cursor, as YES selects it (0x400612b4) */
 
@@ -1106,7 +1107,10 @@ void as_tick(void *api)
         }
         /* The chain to the next slot, every frame: song 2 played with its chain gone on the developer's MKI (23
          * November 2026), and a chain cleared while a song plays would loop it instead of going on. */
-        if (rd32(CHAIN) != next_slot) wr32(CHAIN, next_slot);
+        if (rd32(CHAIN) != next_slot) {
+            wr32(CHAIN, next_slot);
+            wr32(REDRAW, 1);                              /* the arranger rows drawn again, with NEXT SONG */
+        }
         if (rd32(CHANGE_WINDOW) && stopped() && s->pending < 0) {
             s->sl_end = 1;
             if (post_write() < 0) s->sl_end = 0;            /* busy: again next frame */
