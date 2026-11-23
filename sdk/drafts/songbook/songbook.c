@@ -187,6 +187,9 @@ struct as_state {
     uint8_t resume_cur;      /* and the song it was on */
     uint8_t rec7;            /* the record's setlist byte as this copy found it (a power cycle's: the song it was on) */
     uint8_t boot_place;      /* a power cycle in a setlist (no load hook comes): the next card job reads arrbook.work */
+    uint8_t load_read;       /* a load began: the new project's arrbook.work and arrlists.work still to be read */
+    uint8_t load_posted;
+    uint8_t reloading;       /* RELOAD read the (same) project's files already: a later ev_banks_load keeps that */
     uint8_t peek;            /* CUE + YES on the main screen: the playing setlist shown while CUE is held */
     uint8_t peek_cur;        /* there, the cursor (UP/DOWN) */
     uint8_t peek_next;       /* and the song marked to come next ('>'; a further YES moves it to the cursor); 0xff none */
@@ -223,6 +226,7 @@ void as_host_back_memory(void) { st = saved_st; }     /* ... and this one comes 
 #endif
 
 static void title_follow(const struct as_state *s);
+static void load_read(struct as_state *s);
 static char *put_text(char *t, const char *x);
 static char *put_num(char *t, unsigned n);
 static char *list_title(const struct as_state *s, char *t, unsigned l);
@@ -790,6 +794,12 @@ static int sl_finish(struct as_state *s)
 int as_writer(uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4)
 {
     struct as_state *s = ready();
+    if (s->load_read && !s->loading) load_read(s);       /* a load whose ev_banks_loaded did not come */
+    if (s->load_read) {                                   /* mid-load, the new project not read yet: none of the */
+        int rc = s->book == 0 ? stock_writer(a1, a2, a3, a4) : 0;   /* module's files written (LOAD saved the last */
+        remember(s);                                      /* project before it began); book 1 is stock's own */
+        return rc;
+    }
     if (s->lists_unread) read_lists(s);                   /* installed into an open project: its setlists first */
     if (s->boot_place) {                                  /* after a power cycle in a setlist: where it was */
         s->boot_place = 0;
@@ -878,6 +888,7 @@ int as_writer(uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4)
         else write_place(s);                              /* the project says it is in this setlist, from its start */
     }
     s->sl_req = -1;
+    if (s->hush) s->hush = 1;                             /* its NOW SAFE TO EJECT! comes after stock's own part */
     remember(s);
     return rc;
 }
@@ -911,6 +922,7 @@ static void sl_drop(struct as_state *s)
 {
     s->sl_active = 0; s->sl_req = -1; s->sl_go = 0; s->sl_end = 0; s->sl_restart = -1;
     s->peek = 0; s->page = 0; s->reread = 0;
+    wr32(CHAIN, 0xffffffffu);                             /* its chain too: only setlists set one (SETLSTS replaces CHAIN) */
 }
 
 /* A project load or a new project: stock reads arr01-08 into the slots, so they hold book 1. */
@@ -925,18 +937,31 @@ void as_project_load(void)
      * book in use, so the module keeps it: a write in between must not save them as arr01-08. */
     s->loading = 1;
     s->reloaded_slots = 0;
-    /* Where was the project left? Read here, in stock's load job on its card task, from the project being loaded (on
-     * RELOAD, already the saved copy): ev_banks_loaded never came on the developer's MKI. Arranger mode goes into the
-     * byte stock applies when the load ends (LOAD clears it as it starts), so stock itself turns the mode back on.
-     * The book is switched to once stock has finished. */
-    for (unsigned b = 0; b < BOOKS; ++b) s->last[b] = 0;
+    /* Where the new project was left is read once it is the project in use: at ev_banks_loaded, or else by the first
+     * card job after the load. Here the project directory may still be the last project's: read here, project B came
+     * up on project A's book and setlist, and A's setlists were then saved into B (the developer's MKI, 24 November
+     * 2026; HOOKS.md: mark stale at ev_banks_load, read at ev_banks_loaded). */
     sl_drop(s);                                           /* stock replaces the slots: a setlist playing ends */
+    if (s->reloading) { s->ready = 1; return; }           /* RELOAD's own reading stands (the same project) */
+    for (unsigned b = 0; b < BOOKS; ++b) s->last[b] = 0;
+    s->restore = -1;
+    s->resume = -1;
+    s->mode_on = 0;
+    s->load_read = 1;
+    s->load_posted = 0;
+    s->lists_unread = 1;                                  /* the old project's setlists are not shown or changed */
+    s->ready = 1;
+}
+
+/* The new project's arrbook.work and arrlists.work: where it was left (book, choices, arranger mode, setlist). */
+static void load_read(struct as_state *s)
+{
+    s->load_read = 0;
     int b = read_place(s);
     read_lists(s);
     s->restore = (int8_t)(b > 0 ? b : -1);
     s->restore_ticks = 0;
-    if (s->mode_on) wr8(ARR_MODE_WANTED, 1);
-    s->ready = 1;
+    if (s->mode_on && s->loading) wr8(ARR_MODE_WANTED, 1);   /* stock applies it as its load ends */
 }
 
 /* A new project: empty, on book 1; nothing of the last one is read. */
@@ -952,6 +977,7 @@ void as_project_new(void)
     s->damaged = 0;
     s->ready = 1;
     sl_drop(s);                                           /* the slots are stock's again, in a load too */
+    s->reloading = 0;
     int loading = s->loading && s->since_hook < 3600;     /* LOAD and RELOAD run this step too (the developer's MKI) */
     s->loading = 0;
     s->since_hook = 0;
@@ -973,8 +999,9 @@ unsigned as_project_loaded(void)
 {
     struct as_state *s = ready();
     ev(2);
-    s->since_hook = 0;                                    /* the choices were read as the load began; the slots are */
-    ++s->loads;                                           /* replaced only after the new-project step */
+    s->since_hook = 0;
+    if (s->load_read) load_read(s);                       /* the project in use now: where it was left */
+    ++s->loads;                                           /* the slots are replaced only after the new-project step */
     remember(s);
     return 0;
 }
@@ -1004,6 +1031,8 @@ unsigned as_project_reloaded(void)
     struct as_state *s = ready();
     ev(3);
     sl_drop(s);                                           /* stock reloads the slots next */
+    s->reloading = 1;
+    s->load_read = 0;
     s->since_hook = 0;
     for (unsigned n = SLOTS + 1; n <= BOOKS * SLOTS; ++n) {
         arr_path(s->path, n, "strd");
@@ -1385,7 +1414,7 @@ void as_tick(void *api)
      * second; any other message stays). */
     if (s->hush && s->pending < 0) {
         if (rd32(MESSAGE_UP)) { close_message(); s->hush = 0; }
-        else if (++s->hush > 90) s->hush = 0;
+        else if (++s->hush > 250) s->hush = 0;            /* stock's own part of the job can take a few seconds */
     }
     /* Arranger mode as the musician leaves it. Stock's LOAD switches it off and saves that before it loads; only a
      * FUNC + PATTERN of the musician's own records it as off. */
@@ -1438,6 +1467,8 @@ void as_tick(void *api)
             if (post_write() < 0) s->sl_end = 0;            /* busy: again next frame */
         }
     }
+    if (s->load_read && !s->loading && !s->load_posted && s->since_hook > 60 && s->pending < 0 && stopped()
+        && post_write() >= 0) s->load_posted = 1;         /* the new project's files, read by the card task */
     if (!s->sl_active && slots_are_foreign() && s->resume < 0 && s->sl_req < 0 && s->pending < 0 && !s->reread_posted
         && !s->loading && s->since_hook > 240 && stopped() && post_write() >= 0) s->reread_posted = 1;   /* the book back into slots 7 and 8 (a resume's job
                                                                     * does it first anyway) */

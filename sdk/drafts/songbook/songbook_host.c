@@ -159,7 +159,8 @@ int host_copy(const char *to, const char *from)
 static int posted, post_refuse, stock_writes, clears;
 static char last_message[32];
 int host_post_write(void) { if (post_refuse) return post_refuse == 7 ? -7 : -3; ++posted; return 1; }
-const char *host_projdir(void) { return "/SET/PROJ"; }
+static const char *host_dir = "/SET/PROJ";      /* the project in use, as stock's projdir() answers */
+const char *host_projdir(void) { return host_dir; }
 void host_clear_arr(unsigned slot) { ++clears; memset(&cs1[W(slot)], 0, BLOCK); memset(&cs1[S(slot)], 0, BLOCK); cs1[FLAGS + slot] = 0; }
 void host_message(const char *t) { snprintf(last_message, sizeof last_message, "%s", t); }
 static int list_draws;
@@ -472,7 +473,7 @@ int main(void)
     arr_mode = 1; as_tick(0); job();               /* arranger mode on, SYNC */
     mode_wanted = 0; arr_mode = 0; as_tick(0);     /* LOAD switches it off and clears the byte as it starts ... */
     job();                                         /* ... and saves the project before loading it */
-    as_project_load();
+    as_project_load(); as_project_loaded();
     check("left in arranger mode: during the load, the byte stock applies at its end says arranger", mode_wanted == 1);
     as_project_new(); mark(0x10); arr_mode = mode_wanted;  /* stock's end of the load applies it */
     settle(); job(); as_tick(0); as_tick(0);
@@ -481,7 +482,7 @@ int main(void)
     as_key(0x2d, 1); as_key(0x2e, 1); as_key(0x2e, 0); as_key(0x2d, 0); arr_mode = 0; as_tick(0);  /* FUNC + PATTERN: off */
     job();                                         /* SYNC in pattern mode */
     mode_wanted = 0; as_tick(0); job();            /* LOAD: off, save, load */
-    as_project_load();
+    as_project_load(); as_project_loaded();
     check("switched off by the musician: LOAD leaves pattern mode", mode_wanted == 0);
     as_project_new(); mark(0x10); settle(); job(); for (int i = 0; i < 130; ++i) as_tick(0);
     check("and nothing turns it on", arr_mode == 0 && book() == 2);
@@ -520,7 +521,7 @@ int main(void)
     while (book() != 0) { tap(LEFT); job(); as_tick(0); }
     job();
     int p0 = posted;
-    as_project_load(); as_project_new(); mark(0x10); settle(); job(); as_tick(0);
+    as_project_load(); as_project_loaded(); as_project_new(); mark(0x10); settle(); job(); as_tick(0);
     check("left on book 1: it stays on book 1, with no job", book() == 0 && posted == p0 && marked(0x10));
     tap(RIGHT); job(); as_tick(0);                 /* book 2 again for the label checks */
 
@@ -891,6 +892,31 @@ int main(void)
       job(); as_tick(0);
       check("on song 2, the song it was on", chosen == 6 && cs1[W(6) + 100] == s1 && chain() == 7);
       cs1[W(3) + 5] ^= 1; }
+
+    /* LOAD of another project while in a setlist (the developer's MKI, 24 November 2026): stock's project directory
+     * is still the last project's at ev_banks_load and the new one's from ev_banks_loaded */
+    change_window = 0x46c7d384u; as_tick(0); job(); change_window = 0; as_tick(0);
+    as_setlists_open(); tap(UP); tap(UP); tap(YES); job(); as_tick(0);              /* project A, from the first song */
+    stock_chain(); as_tick(0);                        /* song 2 */
+    job();                                            /* LOAD's save of project A first */
+    as_project_load();                                /* ev_banks_load: the directory still A's */
+    host_dir = "/SET/PROJB";
+    as_project_loaded(); as_project_new(); mark(0x30); chosen = 0;   /* project B, never used with the module */
+    for (int i = 0; i < 400; ++i) as_tick(0);
+    job(); for (int i = 0; i < 400; ++i) as_tick(0);   /* the job reading B's book back into slots 7 and 8 */
+    check("project B: no setlist started (B has none), nothing chained", chosen == 0 && chain() == 0xffffffffu);
+    as_setlists_open(); page_draw();
+    check("and B's setlists are its own: empty, not A's", !strcmp(text_at(12), "EMPTY")); tap(NO);
+    job();                                            /* a sync in B */
+    check("no file of B gets A's setlists or place", !find("/SET/PROJB/arrlists.work") && !(find("/SET/PROJB/arrbook.work") && find("/SET/PROJB/arrbook.work")->work[22]));
+    job();                                            /* LOAD's save of project B */
+    as_project_load();                                /* back to A: the directory still B's */
+    host_dir = "/SET/PROJ";
+    as_project_loaded(); as_project_new(); mark(0x10); chosen = 0;
+    { int pp = posted; for (int i = 0; i < 400; ++i) as_tick(0);
+      check("back in project A: its setlist started again", posted == pp + 1); }
+    job(); as_tick(0);
+    check("on song 2, A's own", chosen == 6 && cs1[W(6) + 100] == s1);
 
     /* a project left in a setlist comes back into it after a load, on the song it was on */
     change_window = 0x46c7d384u; as_tick(0); job(); change_window = 0; as_tick(0);
