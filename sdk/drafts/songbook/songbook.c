@@ -840,13 +840,18 @@ void as_tick(void *api)
 }
 
 /* ---------------------------------------------------------------- the screen */
-/* 3x5 glyphs, row-major, 15 bits each (top row in bits 14-12): the module's own. 0-9, then B, O, K. */
-static const uint16_t GLYPH[13] = {
+/* 3x5 glyphs, row-major, 15 bits each (top row in bits 14-12): the module's own. 0-9, then B, O, K, L, I, S, T. */
+static const uint16_t GLYPH[17] = {
     0x7b6f, 0x2c97, 0x73e7, 0x72cf, 0x5bc9, 0x79cf, 0x79ef, 0x7292, 0x7bef, 0x7bcf, 0x6bae, 0x2b6a, 0x5bad,
+    0x4927, 0x7497, 0x388e, 0x7492,
 };
 #define G_B 10
 #define G_O 11
 #define G_K 12
+#define G_L 13
+#define G_I 14
+#define G_S 15
+#define G_T 16
 
 #ifdef AS_HOST
 void host_set(unsigned char *frame, int x, int y, int on);
@@ -865,17 +870,24 @@ static void glyph(unsigned char *frame, int x, int y, unsigned g)
     for (int r = 0; r < 5; ++r) for (int k = 0; k < 3; ++k) if (bits & (1u << (14 - r * 3 - k))) put(frame, x + k, y + r, 0);
 }
 
-/* In ARR > CHANGE: "BOOK 12" knocked out of a solid box at the screen's top right, over whatever stock drew there. */
+/* A four-letter word and a number (1-16) knocked out of a solid box at the screen's right edge, rows top to top + 8. */
+static void label(unsigned char *frame, int top, const uint8_t word[4], unsigned n)
+{
+    int digits = n >= 10 ? 2 : 1;
+    int dx = 124 - 4 * (digits - 1), bx = dx - 19;          /* right-aligned: the word, a space, the number */
+    for (int y = top; y < top + 9; ++y) for (int x = bx - 2; x < 128; ++x) put(frame, x, y, 1);
+    for (int i = 0; i < 4; ++i) glyph(frame, bx + 4 * i, top + 2, word[i]);
+    if (digits == 2) glyph(frame, dx, top + 2, n / 10);
+    glyph(frame, 124, top + 2, n % 10);
+}
+
+/* In ARR > CHANGE, over whatever stock drew there: "BOOK 12" at the top right, and "LIST 3" (the setlist CUE + YES
+ * adds to) at the bottom right. */
 void as_draw(unsigned char *frame)
 {
     struct as_state *s = ready();
     if (!rd32(CHANGE_WINDOW)) return;
-    unsigned n = s->book + 1u;
-    int digits = n >= 10 ? 2 : 1;
-    int dx = 124 - 4 * (digits - 1), bx = dx - 19;          /* right-aligned: BOOK, a space, the number */
-    for (int y = 0; y < 9; ++y) for (int x = bx - 2; x < 128; ++x) put(frame, x, y, 1);
-    static const uint8_t word[4] = {G_B, G_O, G_O, G_K};
-    for (int i = 0; i < 4; ++i) glyph(frame, bx + 4 * i, 2, word[i]);
-    if (digits == 2) glyph(frame, dx, 2, n / 10);
-    glyph(frame, 124, 2, n % 10);
+    static const uint8_t book[4] = {G_B, G_O, G_O, G_K}, list[4] = {G_L, G_I, G_S, G_T};
+    label(frame, 0, book, s->book + 1u);
+    label(frame, 55, list, s->lists.open + 1u);
 }

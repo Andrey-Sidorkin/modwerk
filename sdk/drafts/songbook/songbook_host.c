@@ -571,6 +571,10 @@ int main(void)
     as_project_load(); as_project_new(); job();
     as_key(CUE, 1); tap(YES); as_key(CUE, 0); job();
     check("an arrlists.work that is not ours reads as no setlists", lists_count(0) == 1);
+    memset(lcd, 0, sizeof lcd);
+    as_draw(lcd);
+    check("LIST 1 knocked out of a solid box at the bottom right", lit(105, 55) && !lit(102, 55) && lit(127, 63) && !lit(105, 57) && !lit(105, 61) && lit(106, 57) && !lit(124, 58) && lit(123, 57));
+    check("BOOK 1 still at the top right", lit(103, 0) && !lit(105, 2));
     change_window = 0;
     as_key(CUE, 1);
     check("CUE + YES outside ARR > CHANGE stays stock's", tap(YES) == 0);
