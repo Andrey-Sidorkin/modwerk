@@ -1065,6 +1065,18 @@ int main(void)
       check("a 15-letter name cut where the count needs the room", !strncmp(text_at(4), "5:GIG IN KYIV", 13) && strlen(text_at(4)) <= 14u);
       tap(NO); yes_handler = y; as_tick(0); }
 
+    /* A switch with ARR > BOOKS closed: the list's cursor and the arrangement YES and CUE + YES take are both on the
+     * book's choice (the developer's MKI, 24 November 2026: the cursor alone was moved, CUE + YES added arrangement 1) */
+    { uint32_t y = yes_handler; yes_handler = 0;
+      change_window = 0x46c7d384u; as_tick(0); job(); for (int i = 0; i < 60; ++i) as_tick(0);   /* any setlist ended */
+      chosen = 5; tap(RIGHT); job(); for (int i = 0; i < 60; ++i) as_tick(0);   /* the next book */
+      list[11] = 0; list[7] = 0; change_window = 0;
+      tap(LEFT);                                      /* nothing: the list is closed */
+      change_window = 0x46c7d384u; tap(LEFT); change_window = 0;   /* back, and the list closes before the redraw */
+      job(); for (int i = 0; i < 200; ++i) as_tick(0);
+      check("after a switch, the closed list's cursor and choice both on the book's arrangement 6", list[7] == 5 && list[11] == 5 && list[3] == 0);
+      yes_handler = y; as_tick(0); }
+
     printf("%d checks, %d failed\n", checks, failures);
     return failures != 0;
 }

@@ -1507,7 +1507,10 @@ void as_tick(void *api)
             s->reapply = 0;
             /* The list's cursor on it, open or not: stock keeps the cursor while the list is closed, and after a LOAD
              * it would open on the last project's row (the developer's MKI, 24 November 2026). */
-            if (rd32(LIST_TOP) == 0) wr32(LIST_CURSOR, s->last[s->book]);
+            if (rd32(LIST_TOP) == 0) {                    /* the row drawn and the one YES and CUE + YES take */
+                wr32(LIST_CURSOR, s->last[s->book]);
+                wr32(LIST_CHOICE, s->last[s->book]);      /* (the cursor alone added arrangement 1: the developer's MKI) */
+            }
             if (rd32(CHANGE_WINDOW)) draw_change();
         }
     }
