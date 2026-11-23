@@ -500,14 +500,13 @@ read_lists:
 	.align	2
 	.type	set_chain, @function
 set_chain:
-	lea (-12,%sp),%sp
-	mov3q.l #1,%a0
-	move.l %a6,-(%sp)
+	move.l %a2,-(%sp)
 	clr.b %d0
 	move.l %d2,-(%sp)
 	clr.b %d2
-	lea (11,%sp),%a1
-	move.l 24(%sp),%d1
+	mov3q.l #1,%a0
+	move.l 12(%sp),%d1
+	lea as_chain_text+1,%a1
 	move.b %d0,-2147457388
 	move.b %d0,-2147457387
 	move.b %d2,-2147457386
@@ -515,11 +514,11 @@ set_chain:
 	move.b %d1,-2147457385
 	moveq #62,%d1
 	mulu.w #5652,%d0
-	move.b %d1,10(%sp)
-	move.l %d0,%a6
-	add.l #268435459,%a6
+	move.b %d1,as_chain_text
+	move.l %d0,%a2
+	add.l #268435459,%a2
 .L102:
-	move.b (%a6,%a0.l),%d0
+	move.b (%a2,%a0.l),%d0
 	mvs.b %d0,%d1
 	tst.b %d0
 	jeq .L100
@@ -528,39 +527,26 @@ set_chain:
 	cmp.l %d1,%d2
 	jeq .L114
 	move.b %d0,(%a1)+
-	moveq #9,%d0
+	moveq #15,%d0
 	cmp.l %a0,%d0
 	jne .L102
 .L100:
-	moveq #10,%d1
-	add.l %sp,%d1
-	add.l %d1,%a0
-	moveq #20,%d1
-	add.l %sp,%d1
+	add.l #as_chain_text,%a0
 .L103:
 	clr.b (%a0)+
-	cmp.l %a0,%d1
+	cmp.l #as_chain_text+16,%a0
 	jne .L103
-	lea (10,%sp),%a0
-	move.l #1074480721,%a1
-	sub.l %a0,%a1
-.L104:
-	move.b (%a0)+,%d0
-	move.b %d0,(%a1,%a0.l)
-	cmp.l %a0,%d1
-	jne .L104
 	move.l #1074531393,-(%sp)
 	move.l #1175263150,-(%sp)
 	jsr 1073744956
 	addq.l #8,%sp
 	move.l (%sp)+,%d2
-	move.l (%sp)+,%a6
-	lea (12,%sp),%sp
+	move.l (%sp)+,%a2
 	rts
 .L114:
 	moveq #32,%d0
 	move.b %d0,(%a1)+
-	moveq #9,%d0
+	moveq #15,%d0
 	cmp.l %a0,%d0
 	jne .L102
 	jra .L100
@@ -6310,6 +6296,12 @@ ICON_NORMAL:
 	.long	0
 	.long	0
 	.long	0
+	.globl	as_chain_text
+	.section	.bss
+	.type	as_chain_text, @object
+	.size	as_chain_text, 16
+as_chain_text:
+	.zero	16
 	.data
 	.align	2
 	.type	st_at, @object

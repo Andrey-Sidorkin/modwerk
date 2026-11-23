@@ -24,7 +24,7 @@ CHANGE_NAME = 0x400be786   # the Arranger menu's third entry: its 8-byte name, C
 MENU_NAME = 0x400be796     # the Arranger menu's fourth entry (descriptor 0x400be7e6): its 8-byte name, CHAIN
 MENU_HANDLER = 0x400be7a2  # the same entry's YES routine (stock's CHAIN list, 0x40058b38)
 MENU_ICON = 0x400be79e     # the same entry's icon (stock's CHAIN pictures, 0x400be5c2)
-CHAIN_TEXT = 0x400b4652    # "CHAIN ARR. %d": the arranger rows' chain line (0x40048eb6, 0x400496e4); its "%d" at 0x400b465d is shared
+CHAIN_ROWS = (0x40048eb8, 0x400496e6)  # the operands of the arranger rows' `pea 0x400b4652` ("CHAIN ARR. %d", whose "%d" is shared)
 
 MODULE = Module(
     name="songbook",
@@ -41,10 +41,7 @@ MODULE = Module(
                     "songbook", "as_writer_entry",
                     "stock's arrangement writer: on book 1 stock's own, on another book its arr files; a switch's load",
                     kind="jmp", pad_to=8),),
-    # Only "CHAIN ARR." (10 bytes: the loader writes even spans): the space after it and "%d\0" stay stock's; the last "%d\0" are stock's shared number format (76 users: tempo, MIDI channel,
-    # bank...), which a 14-byte poke emptied on the developer's MKI (23 November 2026).
-    pokes=(Poke(CHAIN_TEXT, stock_guard(CHAIN_TEXT, 10, "6c00cbd284b54f51ea6e1d419aec898ced16d562705bb4fa71502dd730a81077"),
-                b"NEXT SONG\0", "the arranger's chain row reads NEXT SONG (then the next song's name): with SETLSTS in CHAIN's place, a chain is a setlist's next song"),
+    pokes=(
            Poke(CHANGE_NAME, stock_guard(CHANGE_NAME, 8, "605d9de7d5f7c77f5f9df4320ac47c4d5ebe3cd971d7aa18e1438edb2a31b12b"),
                 b"BOOKS\0\0\0", "the Arranger menu's CHANGE item renamed BOOKS: its list shows the book in use (LEFT/RIGHT the others)"),
            Poke(MENU_NAME, stock_guard(MENU_NAME, 8, "78048c5f30cf2d55c3a3b36c966c7e6b6c55d55df4295ee1c9129101860b71c9"),
@@ -52,6 +49,9 @@ MODULE = Module(
     symbol_refs=(SymbolRef(MENU_HANDLER, 0x40058b38, "songbook", "as_setlists_open",
                            "the Arranger menu's CHAIN item opens the SETLSTS page instead of stock's CHAIN list"),
                  SymbolRef(MENU_ICON, 0x400be5c2, "songbook", "as_setlists_icon",
-                           "the Arranger menu's CHAIN item shows the module's list icon"),),
+                           "the Arranger menu's CHAIN item shows the module's list icon"),
+                 *(SymbolRef(at, 0x400b4652, "songbook", "as_chain_text",
+                             "the arranger rows' chain line reads the module's text (the next song's name), not CHAIN ARR. %d")
+                   for at in CHAIN_ROWS),),
     gates=(Gate("modules/songbook/verify.py", remix_arg=False),),
 )

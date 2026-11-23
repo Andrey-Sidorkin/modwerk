@@ -76,7 +76,6 @@
 #define POST_EVENT 0x40000c3cu      /* post(queue, token): an event to a task's queue */
 #define UI_QUEUE 0x460d17aeu        /* the UI task's queue */
 #define ARR_EVENT 0x400c0c41u       /* the token stock posts as the arranger takes a chain (0x4004a834): the rows drawn again */
-#define CHAIN_TEXT 0x400b4652u      /* the chain row's format (manifest.py's poke): the next song's name, written here */
 #define CHAIN 0x80006694u           /* stock's CHAIN: the slot the arranger moves to past its last row, -1 none (0x4004a7e2) */
 #define KEYS 0x46c7d8deu            /* each key code's routed press handler, 0x18 apart (as arr-rows reads it) */
 #define MAIN_YES 0x4005e4c8u        /* YES's handler on the main screen (measured under ot_emu: menu 0x4003395c, editor 0x40058f34) */
@@ -578,23 +577,22 @@ static void block_from_slot(uint8_t *to, unsigned slot) { for (uint32_t i = 0; i
 static void block_to_slot(unsigned slot, const uint8_t *from) { for (uint32_t i = 0; i < BLOCK; ++i) wr8(work_at(slot) + i, from[i]); }
 
 
-/* The chain row's text (">SONG BRA", at most 9 characters and its end): the name of what is in the slot the chain
- * names. Only the 10 bytes of "CHAIN ARR." (manifest.py's poke: the loader writes even spans): the " %d" after them (0x400b465d) is stock's shared number format, used in 76
- * places (tempo, MIDI channel, bank): writing it emptied them all (the developer's MKI, 23 November 2026). It is the
- * row's format string, so a % in a name becomes a space. */
-#define CHAIN_TEXT_LEN 10u
+/* The chain row's text: stock's two arranger-row drawings take their format from here instead of "CHAIN ARR. %d"
+ * (manifest.py's SymbolRefs on their pea operands, 0x40048eb8 and 0x400496e6): the name of what is in the slot the chain
+ * names (">SONG BRAVO"). The module's own buffer: writing into a declared stock change made the loader's check of its
+ * bytes fail, and every later install was refused as busy until a power cycle (the developer's MKI, 23 November 2026).
+ * It is a format string, so a % in a name becomes a space; stock's own text and its shared "%d" stay untouched. */
+char as_chain_text[16];
 static void next_text(unsigned slot)
 {
-    char t[CHAIN_TEXT_LEN];
     unsigned k = 0;
-    t[k++] = '>';
-    for (unsigned i = 0; i < NAME_LEN && k < CHAIN_TEXT_LEN - 1u; ++i) {
+    as_chain_text[k++] = '>';
+    for (unsigned i = 0; i < NAME_LEN && k < sizeof as_chain_text - 1u; ++i) {
         char c = (char)rd8(work_at(slot) + i);
         if (!c) break;
-        t[k++] = c == '%' ? ' ' : c;
+        as_chain_text[k++] = c == '%' ? ' ' : c;
     }
-    while (k < CHAIN_TEXT_LEN) t[k++] = 0;
-    for (unsigned i = 0; i < CHAIN_TEXT_LEN; ++i) wr8(CHAIN_TEXT + i, (uint8_t)t[i]);
+    while (k < sizeof as_chain_text) as_chain_text[k++] = 0;
 }
 
 /* Stock's CHAIN to a slot, its row naming the song there, and the rows drawn again (the arranger draws them as it
