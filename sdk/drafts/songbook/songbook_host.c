@@ -686,12 +686,17 @@ int main(void)
     check("the first song chosen, the second chained, arranger mode on", chosen == 6 && chain() == 7 && arr_mode == 1);
     stock_chain(); as_tick(0);
     check("past the first song: the third into the freed slot 7, chained", chosen == 7 && cs1[W(6) + 100] == s2 && chain() == 6);
+    memset(&misc[0x80006694u - 0x80004f00u], 0xff, 4); as_tick(0);   /* something clears the chain mid-song */
+    check("a chain cleared while a song plays is set again the next frame", chain() == 6 && cs1[W(6) + 100] == s2);
     cs1[W(7) + 200] ^= 0xff;                         /* the second song edited while it plays */
     uint8_t edited = cs1[W(7) + 200];
     { int w = writes; job();
       check("a save while the setlist plays writes none of the book's files", writes == w && find("/SET/PROJ/arr07.work")->work[100] == b7); }
     stock_chain(); as_tick(0);
-    check("past the second song: the last one plays, nothing chained", chosen == 6 && chain() == 0xffffffffu);
+    check("past the second song: the last one plays, chained to the end of the setlist", chosen == 6 && chain() == 7);
+    check("the end: END OF SETLIST, one HALT row (type 1, target its own row)", !memcmp(&cs1[W(7)], "END OF SETLIST", 14) && cs1[W(7) + 0x12] == 0 && cs1[W(7) + 0x13] == 1 && cs1[W(7) + 0x14] == 1 && cs1[W(7) + 0x16] == 0 && cs1[W(7) + 0x17] == 0);
+    stock_chain(); as_tick(0);
+    check("past the last song the arranger is on the HALT, nothing more put in", chosen == 7 && cs1[W(6) + 100] == s2);
     change_window = 0x46c7d384u; pp = posted; as_tick(0);
     check("opening ARR > CHANGE, stopped, ends the setlist with a card job", posted == pp + 1);
     job(); as_tick(0);
@@ -709,7 +714,7 @@ int main(void)
     fail_read_path = 0;
     /* starting from the last song: nothing chained */
     as_setlists_open(); tap(DOWN); tap(DOWN); tap(YES); job(); as_tick(0);
-    check("from the last song: it alone, nothing chained", chosen == 6 && cs1[W(6) + 100] == s2 && chain() == 0xffffffffu);
+    check("from the last song: it, then the end of the setlist", chosen == 6 && cs1[W(6) + 100] == s2 && chain() == 7 && !memcmp(&cs1[W(7)], "END OF SETLIST", 14));
     { int sw = stock_writes; job();
       check("while it plays, the next save leaves the book's files alone", stock_writes == sw); }
     as_project_load(); as_project_new(); mark(0x10); as_tick(0);
