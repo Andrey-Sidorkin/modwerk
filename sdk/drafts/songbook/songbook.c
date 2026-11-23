@@ -1505,6 +1505,18 @@ static void draw_mark(struct as_state *s, unsigned char *frame)
     for (int r = 0; r < 5; r += 2) for (int x = 18; x <= 20; ++x) put(frame, x, 41 + r, 1);   /* the list sign */
     text(frame, 41 - 4 * (int)(t - line), 41, line);           /* right-aligned */
     invert(frame, 17, 40, 40, 46);
+    /* The pattern line under it ("A01 00'", x 10-41): the setlist's name, its first 7 characters ("LIST n" without). */
+    char name[8];
+    t = name;
+    const char *n = s->lists.name[s->sl_list];
+    unsigned k = 0;
+    while (k < 7u && n[k]) ++k;
+    while (k && n[k - 1] == ' ') --k;
+    if (!k) { t = put_text(t, "LIST "); t = put_num(t, s->sl_list + 1u); }
+    else for (unsigned i = 0; i < k; ++i) *t++ = n[i];
+    *t = 0;
+    for (int y = 48; y <= 56; ++y) for (int x = 10; x <= 41; ++x) put(frame, x, y, 0);
+    text(frame, 12, 50, name);
 }
 
 void as_draw(unsigned char *frame)

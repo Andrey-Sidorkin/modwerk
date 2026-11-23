@@ -827,6 +827,7 @@ int main(void)
     as_key(CUE, 0);
     page_draw();
     check("while a setlist plays, the main screen's mark in the Part box: the song's place", !strcmp(text_at(41), "3/3") && lit(30, 40) && !lit(18, 41));
+    check("and the setlist's name on the pattern line", !strcmp(text_at(50), "LIST 1"));
     yes_handler = 0;
     page_draw();
     check("no mark off the main screen", text_at(41)[0] == 0);
