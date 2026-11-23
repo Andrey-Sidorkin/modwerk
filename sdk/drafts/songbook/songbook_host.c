@@ -774,19 +774,20 @@ int main(void)
     check("from the last song: it alone, nothing chained", chosen == 6 && cs1[W(6) + 100] == s2 && chain() == 0xffffffffu);
     { int sw = stock_writes; job();
       check("while it plays, the next save leaves the book's files alone", stock_writes == sw); }
-    /* CUE + NO on the main screen: the setlist playing; UP/DOWN the cursor, YES the '>' to it, CUE released applies it */
+    /* CUE + YES on the main screen: the setlist playing; UP/DOWN the cursor, a further YES the '>' to it, CUE released applies it */
     change_window = 0x46c7d384u; as_tick(0); job(); change_window = 0; as_tick(0);   /* the last run ended */
     as_setlists_open(); tap(UP); tap(UP); tap(YES); job(); as_tick(0);              /* again from the first song */
     check("a setlist from the first song: song 2 next", chosen == 6 && chain() == 7 && cs1[W(7) + 100] == s1);
     yes_handler = 0x40058f34u;                       /* the editor's: not the main screen */
     as_key(CUE, 1);
-    check("CUE + NO in the editor is not the setlist's", tap(NO) == 0);
+    check("CUE + YES in the editor is not the setlist's", tap(YES) == 0);
     as_key(CUE, 0);
     yes_handler = 0x4005e4c8u;                       /* the main screen's */
     as_key(CUE, 1);
-    check("CUE + NO on the main screen opens the playing setlist", tap(NO) == 1);
+    check("CUE + YES on the main screen opens the playing setlist", tap(YES) == 1);
     page_draw();
     check("its title; the cursor on the song playing; the next marked >", !strcmp(text_at(4), "SETLIST 1") && !strcmp(texts[1].t, "1/3") && lit(100, 11) && text_at(19)[0] == '>');
+    check("the opening YES moved nothing", text_at(19)[0] == '>');
     tap(DOWN); tap(DOWN); page_draw();
     check("UP/DOWN move the cursor only: the third row inverted, the > still on the second, * on the first", lit(100, 25) && !lit(100, 11) && text_at(19)[0] == '>' && text_at(12)[0] == '*' && text_at(26)[0] == ' ');
     check("YES is the window's", tap(YES) == 1);
