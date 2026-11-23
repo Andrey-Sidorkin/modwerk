@@ -32,6 +32,8 @@
 #define K_LEFT 0x34
 #define K_FUNC 0x2d
 #define K_PATTERN 0x2e
+#define K_CUE 0x2a
+#define K_YES 0x31
 
 #define BOOKS 16u
 #define SLOTS 8u
@@ -65,6 +67,7 @@
 #define ARR_MODE_ON 0x4005200cu      /* stock's switch into arranger mode (FUNC + PATTERN's, 0x4006103e); nothing if on */
 #define LIST_TOP 0x400c0ba0u         /* ARR > CHANGE: the first row shown */
 #define LIST_CURSOR 0x400c0ba4u      /* ARR > CHANGE: the cursor's row (stock opens the list with it on the choice) */
+#define LIST_CHOICE 0x400c0ba8u      /* ARR > CHANGE: the arrangement under the cursor, as YES selects it (0x400612b4) */
 
 #define REC_MAGIC 0x41534231u        /* "ASB1" */
 #define PLACE_MAGIC 0x41534250u      /* "ASBP": arrbook.work, the book in use and each book's last choice */
@@ -97,7 +100,20 @@ static void wr8(uint32_t a, uint32_t v) { *(volatile uint8_t *)a = (uint8_t)v; }
 static uint32_t rd32(uint32_t a) { return (uint32_t)rd8(a) << 24 | (uint32_t)rd8(a + 1) << 16 | (uint32_t)rd8(a + 2) << 8 | rd8(a + 3); }
 static void wr32(uint32_t a, uint32_t v) { wr8(a, v >> 24); wr8(a + 1, v >> 16); wr8(a + 2, v >> 8); wr8(a + 3, v); }
 
-#define MAGIC 0x41535332u /* "ASS2": card builds do not zero .bss */
+#define MAGIC 0x41535333u /* "ASS3": card builds do not zero .bss */
+
+/* Setlists: 16 of up to 16 songs, each a book, its slot and the name it had (arrlists.work). */
+#define LISTS 16u
+#define LIST_LEN 16u
+#define NAME_LEN 16u
+struct sl_entry { uint8_t book, slot; char name[NAME_LEN]; };
+struct sl_lists {
+    uint8_t magic[4];        /* "ASSL" */
+    uint8_t open;            /* the setlist CUE + YES adds to, 0 = 1 */
+    uint8_t reserved[3];
+    uint8_t count[LISTS];
+    struct sl_entry e[LISTS][LIST_LEN];
+};
 
 struct as_state {
     uint32_t magic;
@@ -125,6 +141,11 @@ struct as_state {
     int8_t restore_rc;       /* the last answer to posting the return after a load, for the diagnostic word */
     uint8_t loads, reloads;  /* project loads and reloads seen, for the diagnostic word */
     uint8_t place[24];       /* arrbook.work: magic, book, the 16 last choices */
+    struct sl_lists lists;   /* the setlists, as in arrlists.work once lists_dirty is 0 */
+    uint8_t lists_dirty;     /* changed since written: the card task writes them with the next sync */
+    uint8_t cue_down;        /* CUE held: YES adds to the setlist, LEFT/RIGHT move an arrangement in the book */
+    uint8_t cue_yes;         /* a YES taken with CUE: its release is ours too */
+    char msg[24];            /* the text of the module's last message box (stock may draw it again later) */
     uint16_t ticks;
     char path[260];
     char path2[260];
@@ -189,8 +210,8 @@ static int file_exists(struct as_state *s) { return host_exists(s->path); }
 static int read_slot(struct as_state *s, unsigned slot) { return host_read_slot(s->path, slot) > 0; }
 static void close_read(struct as_state *s) { (void)s; }
 static int copy_file(struct as_state *s) { return host_copy(s->path2, s->path); }
-static int put_place(struct as_state *s) { return host_put(s->path, s->place, sizeof s->place); }
-static int get_place(struct as_state *s) { return host_get(s->path, s->place, sizeof s->place); }
+static int put_data(struct as_state *s, const void *p, unsigned n) { return host_put(s->path, p, n); }
+static int get_data(struct as_state *s, void *p, unsigned n) { return host_get(s->path, p, n); }
 #else
 static int post_write(void) { return ((int (*)(int))POST_WRITE)(0); }
 static const char *projdir(void) { return ((const char *(*)(int, int))PROJDIR)(0, 0); }
@@ -209,17 +230,17 @@ static int f_open(struct as_state *s, const char *mode) { return ((f_open_t *)F_
 static int f_close(struct as_state *s) { return ((int (*)(void *))F_CLOSE)(s->fo); }
 typedef int f_io_t(void *, void *, unsigned);
 
-/* s->place to s->path / from it, through the module's own buffer. 1 when done. */
-static int put_place(struct as_state *s)
+/* n bytes to s->path / from it, through the module's own buffer. 1 when done. */
+static int put_data(struct as_state *s, const void *p, unsigned n)
 {
     if (f_open(s, "w") < 0) return 0;
-    int ok = ((f_io_t *)F_WRITE)(s->fo, s->place, sizeof s->place) == 1;
+    int ok = ((f_io_t *)F_WRITE)(s->fo, (void *)p, n) == 1;
     return f_close(s) >= 0 && ok;
 }
-static int get_place(struct as_state *s)
+static int get_data(struct as_state *s, void *p, unsigned n)
 {
     if (f_open(s, "r") < 0) return 0;
-    int ok = ((f_io_t *)F_READ)(s->fo, s->place, sizeof s->place) == 1;
+    int ok = ((f_io_t *)F_READ)(s->fo, p, n) == 1;
     f_close(s);
     return ok;
 }
@@ -263,17 +284,20 @@ static void arr_path(char *out, unsigned number, const char *ext)
 
 static unsigned arr_number(unsigned book, unsigned slot) { return book * SLOTS + slot + 1; }
 
-/* "<project>/arrbook.<ext>": where the project was left, so a load comes back to it. */
-static void place_path(char *out, const char *ext)
+/* "<project>/<name>.<ext>": arrbook (where the project was left, so a load comes back to it), arrlists (the setlists). */
+static void project_file(char *out, const char *name, const char *ext)
 {
     const char *dir = projdir();
     char *t = out;
     while (*dir && t < out + 240) *t++ = *dir++;
-    const char *name = "/arrbook.";
+    *t++ = '/';
     while (*name) *t++ = *name++;
+    *t++ = '.';
     while (*ext) *t++ = *ext++;
     *t = 0;
 }
+static void place_path(char *out, const char *ext) { project_file(out, "arrbook", ext); }
+static void lists_path(char *out, const char *ext) { project_file(out, "arrlists", ext); }
 
 static void write_place(struct as_state *s)
 {
@@ -282,14 +306,14 @@ static void write_place(struct as_state *s)
     for (unsigned b = 0; b < BOOKS; ++b) s->place[5 + b] = s->last[b];
     s->place[21] = s->mode_pref;                         /* not stock's flag: LOAD clears it before its own save */
     place_path(s->path, "work");
-    put_place(s);
+    put_data(s, s->place, sizeof s->place);
 }
 
 /* arrbook.work into the memory of choices: the book the project was left on, or -1 when it has none. */
 static int read_place(struct as_state *s)
 {
     place_path(s->path, "work");
-    if (!get_place(s)) { ev(6); return -1; }
+    if (!get_data(s, s->place, sizeof s->place)) { ev(6); return -1; }
     ev(5); ev(s->place[4]);
     if (s->place[0] != 'A' || s->place[1] != 'S' || s->place[2] != 'B' || s->place[3] != 'P'
         || s->place[4] >= BOOKS) return -1;
@@ -386,6 +410,80 @@ static int write_changed(struct as_state *s, unsigned book)
     return ok;
 }
 
+/* ---------------------------------------------------------------- setlists */
+static void sl_clear(struct as_state *s)
+{
+    uint8_t *p = (uint8_t *)&s->lists;
+    for (unsigned i = 0; i < sizeof s->lists; ++i) p[i] = 0;
+    s->lists_dirty = 0;
+}
+
+/* A slot's name, as stock's list shows it ("%.16s" of the block's first bytes). */
+static void slot_name(char *out, unsigned slot)
+{
+    for (unsigned i = 0; i < NAME_LEN; ++i) out[i] = (char)rd8(WORKING + slot * BLOCK + i);
+}
+
+/* The arrangement at slot of book, added at the end of the open setlist: its position (1-16), 0 when full. */
+static unsigned sl_add(struct as_state *s, unsigned book, unsigned slot)
+{
+    unsigned l = s->lists.open, n = s->lists.count[l];
+    if (n >= LIST_LEN) return 0;
+    struct sl_entry *e = &s->lists.e[l][n];
+    e->book = (uint8_t)book;
+    e->slot = (uint8_t)slot;
+    slot_name(e->name, slot);
+    s->lists.count[l] = (uint8_t)(n + 1);
+    s->lists_dirty = 1;
+    return n + 1;
+}
+
+/* Two arrangements of a book changed places: every setlist keeps pointing at the same songs. */
+static void sl_swapped(struct as_state *s, unsigned book, unsigned a, unsigned b)
+{
+    for (unsigned l = 0; l < LISTS; ++l) for (unsigned i = 0; i < s->lists.count[l]; ++i) {
+        struct sl_entry *e = &s->lists.e[l][i];
+        if (e->book != book) continue;
+        if (e->slot == a) { e->slot = (uint8_t)b; s->lists_dirty = 1; }
+        else if (e->slot == b) { e->slot = (uint8_t)a; s->lists_dirty = 1; }
+    }
+}
+
+/* The book in the slots: its songs' names as they are now (a rename shows in the setlists). */
+static void sl_names(struct as_state *s)
+{
+    char name[NAME_LEN];
+    for (unsigned l = 0; l < LISTS; ++l) for (unsigned i = 0; i < s->lists.count[l]; ++i) {
+        struct sl_entry *e = &s->lists.e[l][i];
+        if (e->book != s->book) continue;
+        slot_name(name, e->slot);
+        for (unsigned k = 0; k < NAME_LEN; ++k) if (e->name[k] != name[k]) { e->name[k] = name[k]; s->lists_dirty = 1; }
+    }
+}
+
+/* arrlists.work, in the card task: written when changed; read on a load (empty when missing or not ours). */
+static void write_lists(struct as_state *s)
+{
+    if (!s->lists_dirty) return;
+    s->lists.magic[0] = 'A'; s->lists.magic[1] = 'S'; s->lists.magic[2] = 'S'; s->lists.magic[3] = 'L';
+    lists_path(s->path, "work");
+    if (put_data(s, &s->lists, sizeof s->lists)) s->lists_dirty = 0;
+}
+static void read_lists(struct as_state *s)
+{
+    lists_path(s->path, "work");
+    int ok = get_data(s, &s->lists, sizeof s->lists)
+        && s->lists.magic[0] == 'A' && s->lists.magic[1] == 'S' && s->lists.magic[2] == 'S' && s->lists.magic[3] == 'L'
+        && s->lists.open < LISTS;
+    for (unsigned l = 0; ok && l < LISTS; ++l) {
+        if (s->lists.count[l] > LIST_LEN) ok = 0;
+        for (unsigned i = 0; ok && i < s->lists.count[l]; ++i)
+            if (s->lists.e[l][i].book >= BOOKS || s->lists.e[l][i].slot >= SLOTS) ok = 0;
+    }
+    if (!ok) sl_clear(s);
+    s->lists_dirty = 0;
+}
+
 /* ---------------------------------------------------------------- the card task */
 /* Stock's arrangement writer, stepped into at its entry (the site's jmp reaches as_writer_entry below). */
 int as_writer(uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4)
@@ -428,6 +526,8 @@ int as_writer(uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4)
     }
     ev(switched ? 9u : 0xau);
     if (!switched) s->last[s->book] = (uint8_t)(rd8(INDEX) & 7u);   /* the choice in the book in use, as saved */
+    sl_names(s);                                          /* the setlists: names as the book in the slots has them */
+    write_lists(s);
     write_place(s);                                       /* where the project is: a load comes back here */
     remember(s);
     return rc;
@@ -472,6 +572,7 @@ void as_project_load(void)
      * The book is switched to once stock has finished. */
     for (unsigned b = 0; b < BOOKS; ++b) s->last[b] = 0;
     int b = read_place(s);
+    read_lists(s);
     s->restore = (int8_t)(b > 0 ? b : -1);
     s->restore_ticks = 0;
     if (s->mode_on) wr8(ARR_MODE_WANTED, 1);
@@ -499,6 +600,7 @@ void as_project_new(void)
     s->restore = -1;
     s->mode_on = 0;
     for (unsigned b = 0; b < BOOKS; ++b) s->last[b] = 0;
+    sl_clear(s);                                          /* a new project has no setlists */
 }
 
 /* Stock has read the banks; it reads arr01-08 next, so the slots will hold book 1. Where the project was left is read
@@ -526,6 +628,9 @@ unsigned as_project_stored(void)
     place_path(s->path, "work");
     place_path(s->path2, "strd");
     copy_file(s);
+    lists_path(s->path, "work");
+    lists_path(s->path2, "strd");
+    copy_file(s);
     return 0;
 }
 
@@ -543,11 +648,16 @@ unsigned as_project_reloaded(void)
     place_path(s->path, "strd");
     place_path(s->path2, "work");
     copy_file(s);
+    lists_path(s->path, "strd");
+    lists_path(s->path2, "work");
+    int lists_saved = copy_file(s);
     s->loading = 1;                                       /* the slots change only at the new-project step */
     s->reloaded_slots = 0;
     /* Where it was saved: RELOAD's own hook, after the copy. On the developer's MKI a RELOAD was followed by stock's
      * new-project step (which keeps this) and sometimes by no ev_banks_load at all. */
     int b = read_place(s);
+    if (lists_saved != 0) read_lists(s);                 /* a copy that failed: what the card holds */
+    else { sl_clear(s); s->lists_dirty = 1; }             /* saved before it had setlists: none, as saved */
     s->restore = (int8_t)(b > 0 ? b : -1);
     s->restore_ticks = 0;
     if (s->mode_on) wr8(ARR_MODE_WANTED, 1);
@@ -580,15 +690,72 @@ static int stopped(void)
     return 1;
 }
 
+static char *put_text(char *t, const char *x) { while (*x) *t++ = *x++; return t; }
+static char *put_num(char *t, unsigned n) { if (n >= 10) *t++ = (char)('0' + n / 10); *t++ = (char)('0' + n % 10); return t; }
+
+/* CUE + YES in ARR > CHANGE: the arrangement under the cursor to the end of the open setlist, and say so. */
+static void add_to_list(struct as_state *s)
+{
+    unsigned slot = rd32(LIST_CHOICE) & 7u, l = s->lists.open;
+    unsigned at = sl_add(s, s->book, slot);
+    char *t = s->msg;
+    if (!at) { t = put_text(t, "LIST "); t = put_num(t, l + 1); t = put_text(t, " IS FULL"); }
+    else {
+        *t++ = 'B'; t = put_num(t, s->book + 1u); *t++ = ' '; t = put_num(t, slot + 1u);
+        t = put_text(t, " ADDED TO LIST "); t = put_num(t, l + 1);
+    }
+    *t = 0;
+    message(s->msg);
+}
+
+/* Two arrangements of the book in the slots change places: working and saved copies and their flags. */
+static void swap_slots(unsigned a, unsigned b)
+{
+    for (unsigned k = 0; k < 2; ++k) {
+        uint32_t pa = WORKING + (k * SLOTS + a) * BLOCK, pb = WORKING + (k * SLOTS + b) * BLOCK;
+        for (uint32_t i = 0; i < BLOCK; ++i) { uint8_t x = rd8(pa + i); wr8(pa + i, rd8(pb + i)); wr8(pb + i, x); }
+    }
+    uint32_t f = WORKING + 2u * SLOTS * BLOCK;
+    uint8_t x = rd8(f + a); wr8(f + a, rd8(f + b)); wr8(f + b, x);
+}
+
+/* CUE + LEFT/RIGHT in ARR > CHANGE: the arrangement under the cursor one place up or down in its book. Both are
+ * marked changed, so the next sync writes them to their files; the setlists follow; the choice and cursor go with it. */
+static void move_arr(struct as_state *s, int dir)
+{
+    if (!stopped()) { message("STOP TO MOVE"); return; }
+    int a = (int)(rd32(LIST_CHOICE) & 7u), b = a + dir;
+    if (b < 0 || b >= (int)SLOTS) return;
+    swap_slots((unsigned)a, (unsigned)b);
+    wr8(CHANGED, (uint8_t)(rd8(CHANGED) | 1u << a | 1u << b));
+    sl_swapped(s, s->book, (unsigned)a, (unsigned)b);
+    unsigned idx = rd8(INDEX) & 7u;
+    if (idx == (unsigned)a || idx == (unsigned)b) select_arr(idx == (unsigned)a ? (unsigned)b : (unsigned)a);
+    uint8_t *last = &s->last[s->book];
+    if (*last == a) *last = (uint8_t)b; else if (*last == b) *last = (uint8_t)a;
+    wr32(LIST_CHOICE, (uint32_t)b);
+    wr32(LIST_CURSOR, (uint32_t)b - rd32(LIST_TOP));
+    draw_change();
+}
+
 int as_key(int code, int pressed)
 {
     struct as_state *s = ready();
     if (code == K_FUNC) s->func_down = (uint8_t)!!pressed;
     if (code == K_PATTERN && pressed && s->func_down) { s->mode_key = 1; s->mode_key_ticks = 0; }  /* stock's again */
+    if (code == K_CUE) { s->cue_down = (uint8_t)!!pressed; return 0; }
+    if (code == K_YES && (s->cue_yes || (s->cue_down && rd32(CHANGE_WINDOW)))) {
+        if (!pressed) { s->cue_yes = 0; return 1; }           /* its release is ours too */
+        if (s->cue_yes || s->pending >= 0) return 1;          /* a repeat, or a switch under way */
+        s->cue_yes = 1;
+        add_to_list(s);
+        return 1;
+    }
     if (code != K_LEFT && code != K_RIGHT) return 0;
     if (!rd32(CHANGE_WINDOW)) return 0;                      /* only in ARR > CHANGE */
     if (!pressed) return 1;                                   /* its release is ours too */
     if (s->pending >= 0) return 1;                            /* a switch is under way */
+    if (s->cue_down) { move_arr(s, code == K_RIGHT ? 1 : -1); return 1; }
     if (!stopped()) { message("STOP TO CHANGE BOOK"); return 1; }
     int to = (int)s->book + (code == K_RIGHT ? 1 : -1);
     if (to < 0 || to >= (int)BOOKS) return 1;

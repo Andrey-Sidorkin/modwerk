@@ -24,6 +24,8 @@ void as_host_back_memory(void);
 
 #define LEFT 0x34
 #define RIGHT 0x21
+#define CUE 0x2a
+#define YES 0x31
 #define BLOCK 5652u
 #define SLOTS 8u
 #define W(n) (4u + (n) * BLOCK)                  /* offsets into cs1 */
@@ -199,6 +201,11 @@ static int tap(int code) { int t = as_key(code, 1); as_key(code, 0); return t; }
 static void job(void) { as_writer(0x100b14f0u, 0xff, 0, 0); }   /* the card task runs the posted job */
 static unsigned diag(void) { struct { volatile uint32_t value; } api = {0}; as_tick((void *)&api); return api.value; }
 static unsigned book(void) { return diag() & 15; }
+/* ARR > CHANGE's cursor on arrangement n (all 8 shown: the first row is 1) */
+static void choose(unsigned n) { memset(list, 0, sizeof list); list[7] = (uint8_t)n; list[11] = (uint8_t)n; }
+/* arrlists.work as written: setlist l's song count, and its entry i (book, slot, name) */
+static int lists_count(unsigned l) { struct file *f = find("/SET/PROJ/arrlists.work"); return f ? f->work[8 + l] : -1; }
+static const uint8_t *entry(unsigned l, unsigned i) { return &find("/SET/PROJ/arrlists.work")->work[24 + (l * 16 + i) * 18]; }
 static void settle(void) { for (int i = 0; i < 125; ++i) as_tick(0); }   /* stock's load is over */
 
 int main(void)
@@ -490,6 +497,84 @@ int main(void)
     int d = list_draws;
     post_refuse = 0; change_window = 0x46c7d384u; tap(LEFT); change_window = 0; job(); as_tick(0);
     check("a switch that ends with the list closed draws nothing", list_draws == d);
+
+    /* setlists: CUE + YES adds, CUE + LEFT/RIGHT moves an arrangement in its book, arrlists.work with the project */
+    as_project_new(); mark(0x10); cs1[CHG] = 0; chosen = 0;   /* a new project: book 1, no setlists */
+    files_remove("/SET/PROJ/arrlists.work"); files_remove("/SET/PROJ/arrlists.strd");
+    for (unsigned n = 0; n < SLOTS; ++n) { char nm[17]; snprintf(nm, sizeof nm, "SONG %c", 'A' + n); memset(&cs1[W(n)], 0, 16); memcpy(&cs1[W(n)], nm, strlen(nm)); }
+    change_window = 0x46c7d384u;
+    choose(2);
+    as_key(CUE, 1);
+    check("CUE + YES in ARR > CHANGE is taken", tap(YES) == 1);
+    as_key(CUE, 0);
+    check("and says what it added where", !strcmp(last_message, "B1 3 ADDED TO LIST 1"));
+    check("YES alone stays stock's", tap(YES) == 0);
+    { struct file *f = find("/SET/PROJ/arrlists.work"); check("nothing written before the next sync", !f); }
+    job();
+    { struct file *f = find("/SET/PROJ/arrlists.work");
+      check("the next sync writes arrlists.work: one song, book 1 arrangement 3, its name", f && !memcmp(f->work, "ASSL", 4) && f->work[8] == 1 && f->work[24] == 0 && f->work[25] == 2 && !memcmp(&f->work[26], "SONG C", 6)); }
+    choose(5);
+    as_key(CUE, 1); as_key(YES, 1); as_key(YES, 1); as_key(YES, 0); as_key(CUE, 0);   /* a held YES repeats */
+    job();
+    check("a held YES adds once", lists_count(0) == 2 && !strcmp(last_message, "B1 6 ADDED TO LIST 1"));
+    memcpy(&cs1[W(2)], "INTRO", 6); job();
+    check("a renamed song's new name is in the setlist after the next sync", !memcmp(entry(0, 0) + 2, "INTRO", 6));
+    /* moving: arrangement 3 (in the setlist, chosen) one place down */
+    chosen = 2; choose(2);
+    uint8_t a3 = cs1[W(2) + 100], a4 = cs1[W(3) + 100], s3 = cs1[S(2) + 100], f3 = cs1[FLAGS + 2], f4 = cs1[FLAGS + 3];
+    int q0 = posted;
+    as_key(CUE, 1);
+    check("CUE + RIGHT in ARR > CHANGE is taken", tap(RIGHT) == 1);
+    as_key(CUE, 0);
+    check("arrangements 3 and 4 changed places, working and saved copies and flags", cs1[W(3) + 100] == a3 && cs1[W(2) + 100] == a4 && cs1[S(3) + 100] == s3 && cs1[FLAGS + 3] == f3 && cs1[FLAGS + 2] == f4);
+    check("both are marked changed, so the next sync writes them", (cs1[CHG] & 0x0c) == 0x0c && posted == q0);
+    check("the choice, the list's cursor and the chosen arrangement go with it", list[11] == 3 && list[7] == 3 && chosen == 3);
+    job();
+    check("the setlist still points at the same song, now arrangement 4", entry(0, 0)[1] == 3 && !memcmp(entry(0, 0) + 2, "INTRO", 6));
+    check("and arr03/arr04 hold the swapped arrangements", find("/SET/PROJ/arr04.work")->work[100] == a3 && find("/SET/PROJ/arr03.work")->work[100] == a4);
+    choose(0);
+    as_key(CUE, 1); tap(LEFT); as_key(CUE, 0);
+    check("nothing moves above arrangement 1", list[11] == 0 && cs1[CHG] == 0);
+    playing = 1; choose(3);
+    as_key(CUE, 1); tap(LEFT); as_key(CUE, 0);
+    playing = 0;
+    check("while playing it says so and moves nothing", !strcmp(last_message, "STOP TO MOVE") && cs1[CHG] == 0 && cs1[W(3) + 100] == a3);
+    p0 = posted;
+    as_key(CUE, 1); tap(RIGHT); as_key(CUE, 0);
+    check("CUE + RIGHT never switches the book", book() == 0 && posted == p0);
+    as_key(CUE, 1); tap(LEFT); as_key(CUE, 0); job();          /* back as they were */
+    /* a full setlist */
+    for (int i = 0; i < 14; ++i) { as_key(CUE, 1); tap(YES); as_key(CUE, 0); }
+    job();
+    check("16 songs fill a setlist", lists_count(0) == 16);
+    as_key(CUE, 1); tap(YES); as_key(CUE, 0); job();
+    check("a 17th is refused, and it says so", lists_count(0) == 16 && !strcmp(last_message, "LIST 1 IS FULL"));
+    /* SAVE, RELOAD, LOAD, a new project */
+    as_project_stored();
+    check("SAVE PROJECT copies arrlists.work to arrlists.strd", find("/SET/PROJ/arrlists.strd") && find("/SET/PROJ/arrlists.strd")->work[8] == 16);
+    find("/SET/PROJ/arrlists.work")->work[8] = 3;                /* edited since */
+    as_project_reloaded(); as_project_new(); job();
+    as_key(CUE, 1); tap(YES); as_key(CUE, 0); job();
+    check("RELOAD PROJECT brings the saved setlists back", lists_count(0) == 16 && !strcmp(last_message, "LIST 1 IS FULL"));
+    as_project_new(); job();
+    as_key(CUE, 1); tap(YES); as_key(CUE, 0); job();
+    check("a new project starts with empty setlists", lists_count(0) == 1);
+    as_project_stored();
+    find("/SET/PROJ/arrlists.work")->work[8] = 5;
+    as_project_load(); as_project_new(); job();
+    as_key(CUE, 1); tap(YES); as_key(CUE, 0); job();
+    check("a project load reads arrlists.work", lists_count(0) == 6);
+    files_remove("/SET/PROJ/arrlists.strd");
+    as_project_reloaded(); as_project_new(); job();
+    check("RELOAD of a project saved before it had setlists: none, written so", lists_count(0) == 0);
+    find("/SET/PROJ/arrlists.work")->work[0] = 'X';
+    as_project_load(); as_project_new(); job();
+    as_key(CUE, 1); tap(YES); as_key(CUE, 0); job();
+    check("an arrlists.work that is not ours reads as no setlists", lists_count(0) == 1);
+    change_window = 0;
+    as_key(CUE, 1);
+    check("CUE + YES outside ARR > CHANGE stays stock's", tap(YES) == 0);
+    as_key(CUE, 0);
 
     printf("%d checks, %d failed\n", checks, failures);
     return failures != 0;
