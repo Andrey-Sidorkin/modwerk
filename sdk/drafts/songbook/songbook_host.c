@@ -826,11 +826,15 @@ int main(void)
     check("song 3 was chosen at once, so song 3 starts: * on it, nothing after it", text_at(26)[0] == '*' && chain() == 0xffffffffu);
     as_key(CUE, 0);
     page_draw();
-    check("while a setlist plays, the main screen's mark in the Part box: the song's place", !strcmp(text_at(41), "3/3") && lit(30, 40) && !lit(18, 41));
-    check("and the setlist's name on the Part box's first line, white on black", !strcmp(text_at(34), "LIST 1") && lit(40, 33) && text_at(50)[0] == 0);
+    check("while a setlist plays: its name in the Part box", !strcmp(text_at(34), "LIST 1") && lit(40, 33) && lit(15, 42));
+    check("and the sign and the song's place on the pattern line", !strcmp(text_at(50), "3/3") && lit(12, 50) && lit(12, 54) && lit(15, 52) && !lit(13, 52));
+    as_setlists_open(); as_key(FUNC, 1); tap(YES); as_key(FUNC, 0);   /* a name for the playing setlist */
+    memcpy(named, "GIG IN KYIV    ", 16); named[15] = 0; as_list_named(1);
+    page_draw();
+    check("a long name over the Part box's two lines, broken at a space", !strcmp(text_at(34), "GIG IN") && !strcmp(text_at(41), "KYIV"));
     yes_handler = 0;
     page_draw();
-    check("no mark off the main screen", text_at(41)[0] == 0);
+    check("no mark off the main screen", text_at(34)[0] == 0 && text_at(50)[0] == 0);
 
     as_project_load(); as_project_new(); mark(0x10); as_tick(0);
     { int sw = stock_writes; cs1[CHG] = 1; job();

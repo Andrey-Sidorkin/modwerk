@@ -1492,32 +1492,44 @@ static void draw_peek(struct as_state *s, unsigned char *frame)
     }
 }
 
-/* While a setlist plays, the Part box on the main screen shows it: its name on the first line, a list sign and the
- * song's place ("2/5") on the second (x 17-40, beside the wave icon), white on black; no arrangement row is covered. */
+/* While a setlist plays, the main screen's left column shows it instead of the Part and the pattern (no arrangement row is
+ * covered): the Part box (x 11-40, white on black) its name over two lines of 7 (broken at a space where it can; "LIST n"
+ * without one), and the pattern line under it (x 10-41) the setlist sign (a vertical line and three rules) and the
+ * song's place ("2/6"). */
 static void draw_mark(struct as_state *s, unsigned char *frame)
 {
-    char line[8], *t = put_num(line, s->sl_cur + 1u);
+    char a[8], b[8], *t;
+    const char *n = s->lists.name[s->sl_list];
+    unsigned k = 0;
+    while (k < 15u && n[k]) ++k;
+    while (k && n[k - 1] == ' ') --k;
+    a[0] = b[0] = 0;
+    if (!k) { t = put_text(a, "LIST "); t = put_num(t, s->sl_list + 1u); *t = 0; }
+    else {
+        unsigned cut = k <= 7u ? k : 7u;
+        if (k > 7u) for (unsigned i = 7u; i > 0; --i)        /* at a space, when the rest then fits the second line */
+            if (n[i] == ' ') { if (k - i - 1u <= 7u) cut = i; break; }
+        unsigned i = 0;
+        for (; i < cut; ++i) a[i] = n[i];
+        a[i] = 0;
+        unsigned from = cut;
+        while (from < k && n[from] == ' ') ++from;
+        for (i = 0; i < 7u && from + i < k; ++i) b[i] = n[from + i];
+        b[i] = 0;
+    }
+    for (int y = 33; y <= 46; ++y) for (int x = 11; x <= 40; ++x) put(frame, x, y, 0);
+    text(frame, 12, 34, a);
+    if (b[0]) text(frame, 12, 41, b);
+    invert(frame, 11, 33, 40, 46);
+    char line[8];
+    t = put_num(line, s->sl_cur + 1u);
     *t++ = '/';
     t = put_num(t, s->sl_n);
     *t = 0;
-    for (int y = 40; y <= 46; ++y) for (int x = 17; x <= 40; ++x) put(frame, x, y, 0);
-    for (int r = 0; r < 5; r += 2) for (int x = 18; x <= 20; ++x) put(frame, x, 41 + r, 1);   /* the list sign */
-    text(frame, 41 - 4 * (int)(t - line), 41, line);           /* right-aligned */
-    invert(frame, 17, 40, 40, 46);
-    /* The Part box's first line ("Pt:1 ONE"): the setlist's name, its first 7 characters ("LIST n" without), white on
-     * black; the pattern line under the box stays stock's. */
-    char name[8];
-    t = name;
-    const char *n = s->lists.name[s->sl_list];
-    unsigned k = 0;
-    while (k < 7u && n[k]) ++k;
-    while (k && n[k - 1] == ' ') --k;
-    if (!k) { t = put_text(t, "LIST "); t = put_num(t, s->sl_list + 1u); }
-    else for (unsigned i = 0; i < k; ++i) *t++ = n[i];
-    *t = 0;
-    for (int y = 33; y <= 39; ++y) for (int x = 11; x <= 40; ++x) put(frame, x, y, 0);
-    text(frame, 12, 34, name);
-    invert(frame, 11, 33, 40, 39);
+    for (int y = 48; y <= 56; ++y) for (int x = 10; x <= 41; ++x) put(frame, x, y, 0);
+    for (int y = 50; y <= 54; ++y) put(frame, 12, y, 1);                             /* the sign's vertical line */
+    for (int r = 0; r < 5; r += 2) for (int x = 14; x <= 16; ++x) put(frame, x, 50 + r, 1);   /* and its rules */
+    text(frame, 42 - 4 * (int)(t - line), 50, line);
 }
 
 void as_draw(unsigned char *frame)
