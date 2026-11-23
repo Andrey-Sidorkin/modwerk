@@ -815,6 +815,21 @@ int main(void)
     check("releasing CUE only closes it", text_at(4)[0] == 0 && cs1[W(7) + 100] == s2 && chain() == 7);
     stock_chain(); as_tick(0);
     check("past the first song the third plays, and it is the last: nothing chained", chosen == 7 && chain() == 0xffffffffu);
+    /* a project left in a setlist comes back into it after a load, on the song it was on */
+    change_window = 0x46c7d384u; as_tick(0); job(); change_window = 0; as_tick(0);
+    as_setlists_open(); tap(UP); tap(UP); tap(YES); job(); as_tick(0);              /* from the first song */
+    stock_chain(); as_tick(0); job();                 /* song 2 plays; a sync writes where the project is */
+    check("arrbook.work says: setlist 1, song 2", find("/SET/PROJ/arrbook.work")->work[22] == 0x80 && find("/SET/PROJ/arrbook.work")->work[23] == 1);
+    as_project_load(); as_project_new(); mark(0x10); as_project_loaded(); chosen = 0;
+    { int pp = posted; for (int i = 0; i < 400; ++i) as_tick(0);
+      check("after the load, once it is over, the setlist is started again", posted == pp + 1); }
+    job(); as_tick(0);
+    check("on song 2: it in slot 7, chosen, song 3 chained", chosen == 6 && cs1[W(6) + 100] == s1 && chain() == 7 && cs1[W(7) + 100] == s2);
+    change_window = 0x46c7d384u; as_tick(0); job(); change_window = 0; as_tick(0);
+    check("ended, arrbook.work says no setlist", find("/SET/PROJ/arrbook.work")->work[22] == 0);
+    { int pp = posted; as_project_load(); as_project_new(); mark(0x10); as_project_loaded();
+      for (int i = 0; i < 400; ++i) as_tick(0);
+      check("a load of a project left outside a setlist starts none", posted == pp); }
     /* the window open across a song change: the * and the > follow, unless a song was chosen with YES */
     change_window = 0x46c7d384u; as_tick(0); job(); change_window = 0; as_tick(0);
     as_setlists_open(); tap(UP); tap(UP); tap(YES); job(); as_tick(0);              /* from the first song */

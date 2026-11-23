@@ -32,13 +32,13 @@ put_data:
 	move.l 12(%sp),%d0
 	move.l %d0,%d1
 	pea 4096.w
-	add.l #96578,%d1
+	add.l #96580,%d1
 	move.l %d1,-(%sp)
 	pea .LC0
 	move.l %d0,%d2
-	add.l #96034,%d0
+	add.l #96036,%d0
 	move.l %d0,-(%sp)
-	add.l #96554,%d2
+	add.l #96556,%d2
 	move.l %d2,-(%sp)
 	jsr 1073834084
 	lea (20,%sp),%sp
@@ -79,13 +79,13 @@ get_data:
 	move.l 8(%sp),%d0
 	move.l %d0,%d1
 	pea 4096.w
-	add.l #96578,%d1
+	add.l #96580,%d1
 	move.l %d1,-(%sp)
 	pea .LC1
 	move.l %d0,%d2
-	add.l #96034,%d0
+	add.l #96036,%d0
 	move.l %d0,-(%sp)
-	add.l #96554,%d2
+	add.l #96556,%d2
 	move.l %d2,-(%sp)
 	jsr 1073834084
 	lea (20,%sp),%sp
@@ -121,13 +121,13 @@ arr_write:
 	move.l 12(%sp),%d0
 	move.l %d0,%d1
 	pea 4096.w
-	add.l #96578,%d1
+	add.l #96580,%d1
 	move.l %d1,-(%sp)
 	pea .LC0
 	move.l %d0,%d2
-	add.l #96034,%d0
+	add.l #96036,%d0
 	move.l %d0,-(%sp)
-	add.l #96554,%d2
+	add.l #96556,%d2
 	move.l %d2,-(%sp)
 	jsr 1073834084
 	lea (20,%sp),%sp
@@ -284,6 +284,53 @@ project_file:
 	lea (12,%sp),%sp
 	rts
 	.size	project_file, .-project_file
+	.section	.rodata.str1.1
+.LC2:
+	.string	"work"
+.LC3:
+	.string	"arrbook"
+	.text
+	.align	2
+	.type	write_place, @function
+write_place:
+	move.l %a2,-(%sp)
+	move.l #1095975504,%d0
+	move.l 8(%sp),%a2
+	move.l %a2,%d1
+	add.l #38,%d1
+	move.l %d0,58(%a2)
+	move.b 8(%a2),62(%a2)
+	lea (22,%a2),%a0
+.L64:
+	move.b (%a0)+,%d0
+	move.b %d0,40(%a0)
+	cmp.l %a0,%d1
+	jne .L64
+	move.b 5296(%a2),%d0
+	move.b 43(%a2),79(%a2)
+	tst.b %d0
+	jeq .L65
+	move.b 5302(%a2),%d0
+	moveq #-128,%d1
+	or.l %d1,%d0
+.L65:
+	lsl.l #8,%d0
+	pea .LC2
+	move.l #96036,%a0
+	pea .LC3
+	add.l %a2,%a0
+	move.l %a0,-(%sp)
+	move.b 5301(%a2),%d0
+	move.w %d0,80(%a2)
+	jsr project_file
+	pea 24.w
+	pea 58(%a2)
+	move.l %a2,-(%sp)
+	jsr put_data
+	lea (24,%sp),%sp
+	move.l (%sp)+,%a2
+	rts
+	.size	write_place, .-write_place
 	.align	2
 	.type	arr_read, @function
 arr_read:
@@ -293,20 +340,20 @@ arr_read:
 	move.l %d0,%d4
 	pea 4096.w
 	move.l #1073834084,%a2
-	add.l #96578,%d4
+	add.l #96580,%d4
 	move.l %d4,-(%sp)
 	pea .LC1
 	move.l %d0,%d3
-	add.l #96034,%d3
+	add.l #96036,%d3
 	move.l %d3,-(%sp)
 	move.l %d0,%d2
-	add.l #96554,%d2
+	add.l #96556,%d2
 	move.l %d2,-(%sp)
 	jsr (%a2)
 	lea (20,%sp),%sp
 	tst.l %d0
-	jlt .L71
-.L64:
+	jlt .L80
+.L73:
 	clr.l -(%sp)
 	move.l 28(%sp),-(%sp)
 	move.l %d2,-(%sp)
@@ -323,13 +370,13 @@ arr_read:
 	or.l %d1,%d0
 	lea (16,%sp),%sp
 	rts
-.L71:
+.L80:
 	move.l 1187521530,%a0
 	move.l %d3,-(%sp)
 	jsr (%a0)
 	addq.l #4,%sp
 	tst.l %d0
-	jne .L67
+	jne .L76
 	pea 4096.w
 	move.l %d4,-(%sp)
 	pea .LC1
@@ -338,8 +385,8 @@ arr_read:
 	jsr (%a2)
 	lea (20,%sp),%sp
 	tst.l %d0
-	jge .L64
-.L67:
+	jge .L73
+.L76:
 	move.l 1187521530,%a0
 	move.l %d3,-(%sp)
 	jsr (%a0)
@@ -351,10 +398,6 @@ arr_read:
 	lea (16,%sp),%sp
 	rts
 	.size	arr_read, .-arr_read
-	.section	.rodata.str1.1
-.LC2:
-	.string	"work"
-	.text
 	.align	2
 	.type	write_changed, @function
 write_changed:
@@ -367,24 +410,24 @@ write_changed:
 	mov3q.l #1,%d3
 	lsl.l #3,%d0
 	lea arr_path,%a4
-	add.l #96034,%d5
+	add.l #96036,%d5
 	lea arr_write,%a3
 	move.l %d0,%a2
 	addq.l #1,%a2
-.L74:
+.L83:
 	mvz.b 268525900,%d0
 	btst %d2,%d0
-	jne .L81
+	jne .L90
 	addq.l #1,%d2
 	moveq #8,%d0
 	cmp.l %d2,%d0
-	jne .L74
-.L82:
+	jne .L83
+.L91:
 	move.l %d3,%d0
 	movem.l (%sp),#7228
 	lea (28,%sp),%sp
 	rts
-.L81:
+.L90:
 	pea .LC2
 	pea (%a2,%d2.l)
 	move.l %d5,-(%sp)
@@ -397,11 +440,11 @@ write_changed:
 	and.l %d0,%d3
 	moveq #8,%d0
 	cmp.l %d2,%d0
-	jne .L74
-	jra .L82
+	jne .L83
+	jra .L91
 	.size	write_changed, .-write_changed
 	.section	.rodata.str1.1
-.LC3:
+.LC4:
 	.string	"arrlists"
 	.text
 	.align	2
@@ -410,9 +453,9 @@ read_lists:
 	lea (-28,%sp),%sp
 	movem.l #3196,(%sp)
 	move.l 32(%sp),%a3
-	move.l #96034,%a0
+	move.l #96036,%a0
 	pea .LC2
-	pea .LC3
+	pea .LC4
 	add.l %a3,%a0
 	move.l %a0,-(%sp)
 	move.l %a3,%d2
@@ -425,137 +468,137 @@ read_lists:
 	jsr (%a2)
 	lea (24,%sp),%sp
 	tst.l %d0
-	jeq .L84
+	jeq .L93
 	mvz.b 82(%a3),%d0
 	moveq #65,%d1
 	cmp.l %d0,%d1
-	jeq .L113
-.L84:
+	jeq .L122
+.L93:
 	pea 4632.w
 	move.l %d2,-(%sp)
 	move.l %a3,-(%sp)
 	jsr (%a2)
 	lea (12,%sp),%sp
 	tst.l %d0
-	jeq .L87
-.L116:
+	jeq .L96
+.L125:
 	mvz.b 82(%a3),%d0
 	moveq #65,%d6
 	cmp.l %d0,%d6
-	jeq .L88
-.L89:
+	jeq .L97
+.L98:
 	clr.l %d0
-.L87:
+.L96:
 	move.l %a3,%d1
 	add.l #4730,%d1
 	lea (4986,%a3),%a1
-.L90:
+.L99:
 	move.l %d1,%a0
 	lea (-16,%a0),%a0
-.L91:
+.L100:
 	clr.b (%a0)+
 	cmp.l %a0,%d1
-	jne .L91
+	jne .L100
 	move.l %a0,%d1
 	add.l #16,%d1
 	cmp.l %d1,%a1
-	jne .L90
+	jne .L99
 	tst.l %d0
-	jeq .L86
-.L93:
+	jeq .L95
+.L102:
 	mvz.b 86(%a3),%d0
 	moveq #15,%d1
 	cmp.l %d0,%d1
-	jcs .L86
+	jcs .L95
 	move.l %a3,%d0
 	add.l #4985,%d0
 	lea (4729,%a3),%a0
-.L95:
+.L104:
 	clr.b (%a0)
 	lea (16,%a0),%a0
 	cmp.l %a0,%d0
-	jne .L95
+	jne .L104
 	move.l %a3,%d5
 	add.l #106,%d5
 	lea (90,%a3),%a2
 	move.l %d5,%d4
-.L98:
+.L107:
 	mvz.b (%a2),%d3
 	moveq #16,%d0
 	cmp.l %d3,%d0
-	jcs .L86
+	jcs .L95
 	move.l %d4,%a0
 	clr.l %d0
 	move.l %a0,%a1
 	cmp.l %d3,%d0
-	jeq .L114
-.L97:
+	jeq .L123
+.L106:
 	mvz.b (%a0),%d1
 	addq.l #1,%d0
 	lea (18,%a0),%a0
 	moveq #15,%d6
 	cmp.l %d1,%d6
-	jcc .L115
-.L86:
+	jcc .L124
+.L95:
 	move.l %a3,%d0
 	move.l %d2,%a0
 	add.l #4970,%d0
-.L94:
+.L103:
 	clr.b (%a0)+
 	cmp.l %a0,%d0
-	jne .L94
+	jne .L103
 	clr.w %d0
 	move.w %d0,4970(%a3)
 	movem.l (%sp),#3196
 	lea (28,%sp),%sp
 	rts
-.L115:
+.L124:
 	mvz.b 1(%a1),%d1
 	mov3q.l #7,%d6
 	cmp.l %d1,%d6
-	jcs .L86
+	jcs .L95
 	move.l %a0,%a1
 	cmp.l %d3,%d0
-	jne .L97
-.L114:
+	jne .L106
+.L123:
 	addq.l #1,%a2
 	add.l #288,%d4
 	cmp.l %d5,%a2
-	jne .L98
+	jne .L107
 	clr.w %d0
 	move.w %d0,4970(%a3)
 	movem.l (%sp),#3196
 	lea (28,%sp),%sp
 	rts
-.L113:
+.L122:
 	mvz.b 83(%a3),%d0
 	moveq #83,%d6
 	cmp.l %d0,%d6
-	jne .L84
+	jne .L93
 	mvz.b 84(%a3),%d0
 	moveq #76,%d1
 	cmp.l %d0,%d1
-	jne .L84
+	jne .L93
 	mvz.b 85(%a3),%d0
 	moveq #50,%d6
 	cmp.l %d0,%d6
-	jeq .L93
+	jeq .L102
 	pea 4632.w
 	move.l %d2,-(%sp)
 	move.l %a3,-(%sp)
 	jsr (%a2)
 	lea (12,%sp),%sp
 	tst.l %d0
-	jeq .L87
-	jra .L116
-.L88:
+	jeq .L96
+	jra .L125
+.L97:
 	mvz.b 83(%a3),%d0
 	moveq #83,%d1
 	cmp.l %d0,%d1
-	jne .L89
+	jne .L98
 	mvz.b 84(%a3),%d0
 	cmp.l %d0,%d1
-	jne .L89
+	jne .L98
 	move.b 85(%a3),%d0
 	moveq #76,%d6
 	move.l %a3,%d1
@@ -566,7 +609,7 @@ read_lists:
 	seq %d0
 	mvs.b %d0,%d0
 	neg.l %d0
-	jra .L90
+	jra .L99
 	.size	read_lists, .-read_lists
 	.align	2
 	.type	set_chain, @function
@@ -588,25 +631,25 @@ set_chain:
 	move.b %d1,as_chain_text
 	move.l %d0,%a2
 	add.l #268435459,%a2
-.L120:
+.L129:
 	move.b (%a2,%a0.l),%d0
 	mvs.b %d0,%d1
 	tst.b %d0
-	jeq .L118
+	jeq .L127
 	addq.l #1,%a0
 	moveq #37,%d2
 	cmp.l %d1,%d2
-	jeq .L132
+	jeq .L141
 	move.b %d0,(%a1)+
 	moveq #15,%d0
 	cmp.l %a0,%d0
-	jne .L120
-.L118:
+	jne .L129
+.L127:
 	add.l #as_chain_text,%a0
-.L121:
+.L130:
 	clr.b (%a0)+
 	cmp.l #as_chain_text+16,%a0
-	jne .L121
+	jne .L130
 	move.l #1074531393,-(%sp)
 	move.l #1175263150,-(%sp)
 	jsr 1073744956
@@ -614,13 +657,13 @@ set_chain:
 	move.l (%sp)+,%d2
 	move.l (%sp)+,%a2
 	rts
-.L132:
+.L141:
 	moveq #32,%d0
 	move.b %d0,(%a1)+
 	moveq #15,%d0
 	cmp.l %a0,%d0
-	jne .L120
-	jra .L118
+	jne .L129
+	jra .L127
 	.size	set_chain, .-set_chain
 	.align	2
 	.type	take_back, @function
@@ -631,9 +674,9 @@ take_back:
 	move.l 24(%sp),%a0
 	add.l %a1,%a0
 	mvz.b 5300(%a1),%d1
-	mvz.b 5308(%a0),%d0
+	mvz.b 5310(%a0),%d0
 	cmp.l %d0,%d1
-	jls .L133
+	jls .L142
 	mvz.w #5652,%d2
 	move.l 24(%sp),%d1
 	mov3q.l #1,%d4
@@ -641,34 +684,34 @@ take_back:
 	lsl.l %d0,%d4
 	muls.l %d1,%d2
 	mulu.w #5652,%d0
-	lea (5600,%a1),%a0
+	lea (5602,%a1),%a0
 	move.l %a1,%d3
-	add.l #11252,%d3
+	add.l #11254,%d3
 	move.l %d2,%a2
 	sub.l %a1,%a2
-	add.l #268463772,%a2
+	add.l #268463770,%a2
 	add.l %d0,%a0
 	add.l %d0,%d3
-.L136:
+.L145:
 	move.b (%a2,%a0.l),%d0
 	mvz.b (%a0)+,%d2
 	mvz.b %d0,%d1
 	cmp.l %d2,%d1
-	jeq .L135
+	jeq .L144
 	move.b %d0,-1(%a0)
-	move.w 5310(%a1),%d0
+	move.w 5312(%a1),%d0
 	or.l %d4,%d0
-	move.w %d0,5310(%a1)
-.L135:
+	move.w %d0,5312(%a1)
+.L144:
 	cmp.l %a0,%d3
-	jne .L136
-.L133:
+	jne .L145
+.L142:
 	movem.l (%sp),#1052
 	lea (16,%sp),%sp
 	rts
 	.size	take_back, .-take_back
 	.section	.rodata.str1.1
-.LC4:
+.LC5:
 	.string	"SETLIST "
 	.text
 	.align	2
@@ -682,45 +725,45 @@ list_title:
 	move.l %d1,%a0
 	lea (4714,%a0),%a0
 	add.l 12(%sp),%a0
-.L141:
+.L150:
 	tst.b (%a0,%d0.l)
-	jeq .L145
+	jeq .L154
 	addq.l #1,%d0
 	moveq #15,%d1
 	cmp.l %d0,%d1
-	jne .L141
-.L145:
+	jne .L150
+.L154:
 	move.l %d0,%d1
 	subq.l #1,%d1
 	tst.l %d0
-	jeq .L144
-.L161:
+	jeq .L153
+.L170:
 	mvs.b (%a0,%d1.l),%d2
 	moveq #32,%d3
 	cmp.l %d2,%d3
-	jne .L160
+	jne .L169
 	move.l %d1,%d0
 	move.l %d0,%d1
 	subq.l #1,%d1
 	tst.l %d0
-	jne .L161
-.L144:
+	jne .L170
+.L153:
 	moveq #83,%d1
 	move.l 16(%sp),%a1
 	move.l 16(%sp),%d0
 	addq.l #8,%d0
-	lea .LC4,%a0
-.L147:
+	lea .LC5,%a0
+.L156:
 	move.b %d1,(%a1)+
 	addq.l #1,%a0
 	move.b (%a0),%d1
 	cmp.l %a1,%d0
-	jne .L147
+	jne .L156
 	move.l 20(%sp),%d1
 	moveq #9,%d2
 	addq.l #1,%d1
 	cmp.l %d1,%d2
-	jcc .L148
+	jcc .L157
 	move.l %d1,%d2
 	moveq #10,%d3
 	divu.l %d3,%d2
@@ -729,7 +772,7 @@ list_title:
 	add.l #9,%d0
 	add.l #48,%d2
 	move.b %d2,8(%a0)
-.L148:
+.L157:
 	moveq #10,%d3
 	remu.l %d3,%d2:%d1
 	move.l %d0,%a0
@@ -739,27 +782,27 @@ list_title:
 	move.l %a0,%d0
 	move.l (%sp)+,%d3
 	rts
-.L160:
+.L169:
 	move.l 16(%sp),%a1
 	move.l %a0,%d1
 	add.l %d0,%d1
-.L150:
+.L159:
 	move.b (%a0)+,(%a1)+
 	cmp.l %a0,%d1
-	jne .L150
+	jne .L159
 	add.l 16(%sp),%d0
 	move.l (%sp)+,%d2
 	move.l (%sp)+,%d3
 	rts
 	.size	list_title, .-list_title
 	.section	.rodata.str1.1
-.LC5:
-	.string	"ARR B"
 .LC6:
-	.string	"STL:"
+	.string	"ARR B"
 .LC7:
-	.string	"%d:%."
+	.string	"STL:"
 .LC8:
+	.string	"%d:%."
+.LC9:
 	.string	"%d:%s"
 	.text
 	.align	2
@@ -769,21 +812,21 @@ title_follow:
 	movem.l #19516,(%sp)
 	move.l 48(%sp),%a3
 	tst.b 5296(%a3)
-	jne .L163
+	jne .L172
 	moveq #65,%d0
 	lea as_title_fmt,%a1
-	lea .LC5,%a0
-.L164:
+	lea .LC6,%a0
+.L173:
 	move.b %d0,(%a1)+
 	addq.l #1,%a0
 	move.b (%a0),%d0
-	cmp.l #.LC5+5,%a0
-	jne .L164
+	cmp.l #.LC6+5,%a0
+	jne .L173
 	mvz.b 8(%a3),%d0
 	moveq #9,%d1
 	addq.l #1,%d0
 	cmp.l %d0,%d1
-	jcc .L189
+	jcc .L198
 	move.l %d0,%d1
 	moveq #10,%d3
 	divu.l %d3,%d1
@@ -799,45 +842,45 @@ title_follow:
 	move.b %d1,(%a0)
 	move.l #-2147483643,%a0
 	move.b (%a0),as_title_index
-.L166:
+.L175:
 	moveq #37,%d0
 	move.l %a2,%d1
 	move.l %a2,%a1
 	addq.l #5,%d1
-	lea .LC8,%a0
-.L188:
+	lea .LC9,%a0
+.L197:
 	move.b %d0,(%a1)+
 	addq.l #1,%a0
 	move.b (%a0),%d0
 	cmp.l %a1,%d1
-	jne .L188
+	jne .L197
 	clr.b %d3
 	move.b %d3,5(%a2)
 	movem.l (%sp),#19516
 	lea (44,%sp),%sp
 	rts
-.L163:
-	mvz.b 5307(%a3),%d0
+.L172:
+	mvz.b 5309(%a3),%d0
 	sub.l %a6,%a6
 	mulu.w #5652,%d0
 	move.l %d0,%a0
 	add.l #268435460,%a0
-.L167:
+.L176:
 	tst.b (%a6,%a0.l)
-	jeq .L204
+	jeq .L213
 	addq.l #1,%a6
 	moveq #16,%d0
 	cmp.l %a6,%d0
-	jne .L167
+	jne .L176
 	mov3q.l #4,%d3
-.L168:
+.L177:
 	mvz.b 5301(%a3),%d0
 	moveq #9,%d1
 	addq.l #1,%d0
 	cmp.l %d0,%d1
-	jcc .L191
+	jcc .L200
 	mov3q.l #2,%d1
-.L170:
+.L179:
 	mvz.b 5302(%a3),%d0
 	move.l %sp,%d4
 	add.l #28,%d4
@@ -850,65 +893,65 @@ title_follow:
 	lea (12,%sp),%sp
 	sub.l %d4,%d0
 	cmp.l %d0,%d2
-	jcc .L171
+	jcc .L180
 	moveq #15,%d0
-.L171:
+.L180:
 	cmp.l %d3,%d0
-	jls .L172
+	jls .L181
 	move.l %d0,%d1
 	mov3q.l #7,%d5
 	cmp.l %d0,%d5
-	jcc .L174
+	jcc .L183
 	mov3q.l #7,%d1
-.L174:
+.L183:
 	cmp.l %d1,%d0
-	jls .L172
+	jls .L181
 	subq.l #1,%d0
 	cmp.l %d3,%d0
-	jne .L174
-.L172:
+	jne .L183
+.L181:
 	move.l %d0,%a0
 	move.l %d0,%d1
 	move.l %d4,%a1
 	add.l %d4,%a0
 	subq.l #1,%d1
 	tst.l %d0
-	jeq .L176
-.L205:
+	jeq .L185
+.L214:
 	mvs.b -(%a0),%d2
 	moveq #32,%d5
 	cmp.l %d2,%d5
-	jne .L176
+	jne .L185
 	move.l %d1,%d0
 	move.l %d0,%d1
 	subq.l #1,%d1
 	tst.l %d0
-	jne .L205
-.L176:
+	jne .L214
+.L185:
 	moveq #83,%d1
 	lea as_title_fmt,%a2
-	lea .LC6,%a0
-.L178:
+	lea .LC7,%a0
+.L187:
 	move.b %d1,(%a2)+
 	addq.l #1,%a0
 	move.b (%a0),%d1
-	cmp.l #.LC6+4,%a0
-	jne .L178
+	cmp.l #.LC7+4,%a0
+	jne .L187
 	tst.l %d0
-	jeq .L179
+	jeq .L188
 	move.l %d0,%a2
 	add.l %d4,%a2
 	lea as_title_fmt+4,%a0
-.L181:
+.L190:
 	move.b (%a1)+,%d1
 	moveq #37,%d4
 	mvs.b %d1,%d2
 	cmp.l %d2,%d4
-	jeq .L206
+	jeq .L215
 	move.b %d1,(%a0)+
 	cmp.l %a1,%a2
-	jne .L181
-.L207:
+	jne .L190
+.L216:
 	moveq #58,%d5
 	lea as_title_fmt+4,%a0
 	move.l %d0,%d2
@@ -919,21 +962,21 @@ title_follow:
 	move.b %d5,(%a0,%d0.l)
 	move.b (%a3),as_title_index
 	cmp.l %d3,%d0
-	jls .L166
+	jls .L175
 	moveq #37,%d1
 	add.l %a6,%d3
 	sub.l %d0,%d3
-	lea .LC7,%a0
-.L184:
+	lea .LC8,%a0
+.L193:
 	move.b %d1,(%a2)
 	addq.l #1,%a0
 	addq.l #1,%a2
 	move.b (%a0),%d1
-	cmp.l #.LC7+5,%a0
-	jne .L184
+	cmp.l #.LC8+5,%a0
+	jne .L193
 	moveq #9,%d0
 	cmp.l %d3,%d0
-	jcs .L185
+	jcs .L194
 	moveq #10,%d1
 	remu.l %d1,%d0:%d3
 	move.l %d2,%a0
@@ -942,11 +985,11 @@ title_follow:
 	add.l #48,%d0
 	move.b %d0,(%a0)
 	move.w %d2,1(%a0)
-.L208:
+.L217:
 	movem.l (%sp),#19516
 	lea (44,%sp),%sp
 	rts
-.L189:
+.L198:
 	moveq #10,%d4
 	remu.l %d4,%d1:%d0
 	moveq #58,%d5
@@ -957,14 +1000,14 @@ title_follow:
 	move.b %d5,1(%a0)
 	move.l #-2147483643,%a0
 	move.b (%a0),as_title_index
-	jra .L166
-.L206:
+	jra .L175
+.L215:
 	moveq #32,%d1
 	move.b %d1,(%a0)+
 	cmp.l %a1,%a2
-	jne .L181
-	jra .L207
-.L179:
+	jne .L190
+	jra .L216
+.L188:
 	lea as_title_fmt+4,%a2
 	lea (5301,%a3),%a3
 	move.l %a2,%d1
@@ -972,16 +1015,16 @@ title_follow:
 	move.b (%a3),as_title_index
 	moveq #37,%d0
 	addq.l #5,%d1
-	lea .LC8,%a0
-	jra .L188
-.L191:
+	lea .LC9,%a0
+	jra .L197
+.L200:
 	mov3q.l #1,%d1
-	jra .L170
-.L204:
+	jra .L179
+.L213:
 	moveq #20,%d3
 	sub.l %a6,%d3
-	jra .L168
-.L185:
+	jra .L177
+.L194:
 	move.l %d3,%d0
 	moveq #10,%d4
 	divu.l %d4,%d0
@@ -996,7 +1039,7 @@ title_follow:
 	move.w %d2,1(%a0)
 	add.l #48,%d0
 	move.b %d0,(%a0)
-	jra .L208
+	jra .L217
 	.size	title_follow, .-title_follow
 	.align	2
 	.type	invert, @function
@@ -1006,7 +1049,7 @@ invert:
 	move.l 64(%sp),%a3
 	move.l 48(%sp),%a0
 	cmp.l 56(%sp),%a3
-	jlt .L209
+	jlt .L218
 	mvz.w 54(%sp),%d1
 	mvz.w 62(%sp),%d0
 	addq.l #1,%a3
@@ -1015,7 +1058,7 @@ invert:
 	lsl.l #3,%d0
 	lea 7(%a0,%d1.l),%a5
 	lea 15(%a0,%d0.l),%a4
-.L214:
+.L223:
 	mov3q.l #7,%d3
 	and.l 56(%sp),%d3
 	move.l %a6,%d6
@@ -1030,25 +1073,25 @@ invert:
 	lsl.l %d3,%d6
 	move.b %d6,%d4
 	not.l %d6
-.L213:
+.L222:
 	move.b (%a0),%d0
 	mvz.b %d0,%d7
 	move.l %d0,%d1
 	or.l %d4,%d1
 	btst %d3,%d7
-	jeq .L212
+	jeq .L221
 	move.l %d0,%d1
 	and.l %d6,%d1
-.L212:
+.L221:
 	lea (%a0,%d2.l),%a1
 	addq.l #8,%a0
 	move.b %d1,-7(%a1,%a2.l)
 	cmp.l %a0,%d5
-	jne .L213
+	jne .L222
 	addq.l #1,56(%sp)
 	cmp.l 56(%sp),%a3
-	jne .L214
-.L209:
+	jne .L223
+.L218:
 	movem.l (%sp),#31996
 	lea (44,%sp),%sp
 	rts
@@ -1070,7 +1113,7 @@ glyph:
 	move.l 52(%sp),%d0
 	add.l #24,%d6
 	mvz.w (%a0,%d0.l*2),%d7
-.L220:
+.L229:
 	mov3q.l #7,%d2
 	and.l %d4,%d2
 	move.l %d4,%d3
@@ -1082,25 +1125,25 @@ glyph:
 	move.l %a4,%d3
 	lsl.l %d2,%d3
 	not.l %d3
-.L222:
+.L231:
 	move.l %d5,%a0
 	add.l %d0,%a0
 	add.l %a2,%a0
 	addq.l #8,%d0
 	btst %d1,%d7
-	jeq .L221
+	jeq .L230
 	move.b (%a0),%d2
 	and.l %d3,%d2
 	move.b %d2,(%a0)
-.L221:
+.L230:
 	subq.l #1,%d1
 	cmp.l %d0,%d6
-	jne .L222
+	jne .L231
 	addq.l #1,%d4
 	subq.l #3,%a1
 	mov3q.l #-1,%d0
 	cmp.l %a1,%d0
-	jne .L220
+	jne .L229
 	movem.l (%sp),#7420
 	lea (36,%sp),%sp
 	rts
@@ -1117,22 +1160,22 @@ label:
 	move.l 56(%sp),%d5
 	move.l %d0,44(%sp)
 	cmp.l %a5,%d1
-	jcc .L243
+	jcc .L252
 	move.w #101,%a1
 	moveq #120,%d1
 	mov3q.l #2,40(%sp)
-.L231:
+.L240:
 	tst.l %d5
 	seq %d0
 	neg.l %d0
 	tst.b %d0
-	jeq .L233
+	jeq .L242
 	move.w #8,%a0
-.L234:
+.L243:
 	cmp.l %d5,%a0
-	jlt .L232
+	jlt .L241
 	tst.b %d0
-	jne .L249
+	jne .L258
 	lsl.l #3,%d1
 	move.w #64,%a4
 	move.l %d6,%a2
@@ -1142,7 +1185,7 @@ label:
 	move.l %d1,%d4
 	add.l %d6,%d4
 	add.l #-168,%d4
-.L238:
+.L247:
 	move.l %d3,%d0
 	asr.l #3,%d0
 	mov3q.l #7,%d1
@@ -1154,17 +1197,17 @@ label:
 	add.l %d1,%a0
 	add.l %a2,%d1
 	lsl.l %d0,%d2
-.L237:
+.L246:
 	move.b (%a0),%d0
 	addq.l #8,%a0
 	or.l %d2,%d0
 	move.b %d0,-8(%a0)
 	cmp.l %d1,%a0
-	jne .L237
+	jne .L246
 	addq.l #1,%d3
 	cmp.l %a4,%d3
-	jne .L238
-.L232:
+	jne .L247
+.L241:
 	moveq #101,%d1
 	addq.l #2,%d5
 	cmp.l %a1,%d1
@@ -1173,10 +1216,10 @@ label:
 	move.l %a1,%d2
 	neg.l %d0
 	tst.b %d0
-	jeq .L239
+	jeq .L248
 	moveq #117,%d3
 	lea glyph,%a3
-.L241:
+.L250:
 	mvz.b (%a2)+,%d0
 	move.l %d0,-(%sp)
 	move.l %d5,-(%sp)
@@ -1186,10 +1229,10 @@ label:
 	addq.l #4,%d2
 	lea (16,%sp),%sp
 	cmp.l %d2,%d3
-	jne .L241
+	jne .L250
 	mov3q.l #2,%d2
 	cmp.l 40(%sp),%d2
-	jeq .L250
+	jeq .L259
 	move.l %a5,%d7
 	moveq #10,%d1
 	remu.l %d1,%d0:%d7
@@ -1201,19 +1244,19 @@ label:
 	move.l %d0,64(%sp)
 	lea (48,%sp),%sp
 	jra glyph
-.L239:
+.L248:
 	moveq #121,%d3
 	lea glyph,%a3
-	jra .L241
-.L233:
+	jra .L250
+.L242:
 	move.w #63,%a0
-	jra .L234
-.L243:
+	jra .L243
+.L252:
 	move.w #105,%a1
 	moveq #124,%d1
 	mov3q.l #1,40(%sp)
-	jra .L231
-.L249:
+	jra .L240
+.L258:
 	lsl.l #3,%d1
 	move.l %d6,%a2
 	move.l %d5,%d3
@@ -1223,8 +1266,8 @@ label:
 	move.l %d1,%d4
 	add.l %d6,%d4
 	add.l #-168,%d4
-	jra .L238
-.L250:
+	jra .L247
+.L259:
 	move.l %a5,%d0
 	moveq #10,%d2
 	divu.l %d2,%d0
@@ -1258,11 +1301,11 @@ read_book.constprop.0:
 	sub.l %a2,%a2
 	lsl.l #3,%d0
 	lea arr_path,%a5
-	add.l #96034,%d5
+	add.l #96036,%d5
 	lea arr_read,%a4
 	move.l %d0,%a3
 	addq.l #1,%a3
-.L253:
+.L262:
 	pea .LC2
 	pea (%a2,%a3.l)
 	move.l %d5,-(%sp)
@@ -1274,7 +1317,7 @@ read_book.constprop.0:
 	move.l %d0,%d2
 	mov3q.l #1,%d0
 	cmp.l %d2,%d0
-	jeq .L252
+	jeq .L261
 	move.l %a2,-(%sp)
 	jsr 1074398236
 	addq.l #4,%sp
@@ -1284,18 +1327,18 @@ read_book.constprop.0:
 	mvs.b %d2,%d2
 	neg.l %d2
 	and.l %d2,%d3
-.L252:
+.L261:
 	addq.l #1,%a2
 	moveq #8,%d0
 	cmp.l %a2,%d0
-	jne .L253
+	jne .L262
 	move.l %d3,%d0
 	movem.l (%sp),#15420
 	lea (32,%sp),%sp
 	rts
 	.size	read_book.constprop.0, .-read_book.constprop.0
 	.section	.rodata.str1.1
-.LC9:
+.LC10:
 	.string	"bak"
 	.text
 	.align	2
@@ -1314,64 +1357,64 @@ sl_load:
 	st %d1
 	move.b %d1,5295(%a4)
 	cmp.l 46(%sp),%d5
-	jhi .L289
+	jhi .L298
 	mov3q.l #1,%d0
-.L260:
+.L269:
 	movem.l (%sp),#31996
 	lea (52,%sp),%sp
 	rts
-.L289:
+.L298:
 	move.w %d5,%d4
 	mulu.w #288,%d0
-	lea (11252,%a4),%a6
+	lea (11254,%a4),%a6
 	move.l %a4,%d3
-	add.l #5600,%d3
-	lea (5312,%a4),%a5
+	add.l #5602,%d3
+	lea (5314,%a4),%a5
 	move.l %a5,%a3
 	move.l %a6,%d1
 	move.l %d3,%d2
 	lea 124(%a4,%d0.l),%a1
 	mulu.w #5652,%d4
 	add.l %a6,%d4
-.L265:
+.L274:
 	lea (-18,%a1),%a0
 	move.l %a3,%a2
-.L262:
+.L271:
 	move.b (%a0)+,(%a2)+
 	cmp.l %a0,%a1
-	jne .L262
+	jne .L271
 	mvz.b (%a3),%d6
 	mvz.b 8(%a4),%d0
 	cmp.l %d6,%d0
-	jeq .L290
-.L263:
+	jeq .L299
+.L272:
 	add.l #5652,%d2
 	add.l #5652,%d1
 	lea (18,%a3),%a3
 	lea (18,%a1),%a1
 	cmp.l %d1,%d4
-	jne .L265
+	jne .L274
 	move.b %d7,51(%sp)
-	mvs.w #-5600,%d4
+	mvs.w #-5602,%d4
 	move.l %a4,%d6
 	clr.l %d2
-	add.l #96034,%d6
+	add.l #96036,%d6
 	lea arr_path,%a3
 	sub.l %a4,%d4
 	lea arr_read,%a2
-.L273:
+.L282:
 	move.b (%a5),%d1
 	mvz.b 8(%a4),%d7
 	mvz.b %d1,%d0
 	cmp.l %d0,%d7
-	jeq .L266
+	jeq .L275
 	tst.b %d1
-	jne .L277
+	jne .L286
 	tst.b 11(%a4)
-	jeq .L277
+	jeq .L286
 	lsl.l #3,%d0
 	mvz.b 1(%a5),%d7
-	move.l #.LC9,%d1
+	move.l #.LC10,%d1
 	move.l %d1,-(%sp)
 	move.l %d7,%a0
 	pea 1(%a0,%d0.l)
@@ -1382,28 +1425,28 @@ sl_load:
 	jsr (%a2)
 	lea (20,%sp),%sp
 	tst.l %d0
-	jne .L268
-.L292:
+	jne .L277
+.L301:
 	mov3q.l #7,-(%sp)
 	jsr 1074398236
 	addq.l #4,%sp
-.L269:
+.L278:
 	move.l %d4,%a1
 	move.l %d3,%a0
 	add.l #268475024,%a1
-.L271:
+.L280:
 	move.b (%a1,%a0.l),%d0
 	move.b %d0,(%a0)+
 	cmp.l %a0,%a6
-	jne .L271
-.L266:
+	jne .L280
+.L275:
 	addq.l #1,%d2
 	lea (18,%a5),%a5
 	add.l #5652,%d3
 	add.l #-5652,%d4
 	lea (5652,%a6),%a6
 	cmp.l %d5,%d2
-	jne .L273
+	jne .L282
 	mvz.w #5652,%d1
 	move.l 46(%sp),%d3
 	move.l %d2,%d0
@@ -1416,23 +1459,23 @@ sl_load:
 	move.b %d1,5302(%a4)
 	moveq #6,%d1
 	move.w %d0,5300(%a4)
-	move.b %d1,5307(%a4)
-	clr.w %d1
-	move.w %d1,5310(%a4)
-	st %d1
 	move.b %d1,5309(%a4)
+	clr.w %d1
+	move.w %d1,5312(%a4)
+	st %d1
+	move.b %d1,5311(%a4)
 	move.l %d3,%d1
-	add.l #5600,%d1
+	add.l #5602,%d1
 	add.l %a4,%d1
 	sub.l %d1,%a1
 	move.l %d1,%a0
 	add.l #5652,%d1
-.L274:
+.L283:
 	move.b (%a0)+,%d0
 	move.b %d0,(%a1,%a0.l)
 	cmp.l %a0,%d1
-	jne .L274
-	move.b %d7,5308(%a4)
+	jne .L283
+	move.b %d7,5310(%a4)
 	move.l #268525900,%a0
 	moveq #-65,%d1
 	move.l 46(%sp),%d7
@@ -1441,30 +1484,30 @@ sl_load:
 	and.l %d1,%d0
 	move.b %d0,(%a0)
 	cmp.l %d7,%d2
-	jhi .L291
+	jhi .L300
 	move.w #257,%d0
 	move.w %d0,5296(%a4)
-.L293:
+.L302:
 	mov3q.l #1,%d0
-	jra .L260
-.L290:
+	jra .L269
+.L299:
 	mvz.b 1(%a3),%d0
 	move.l %d2,%a0
 	mulu.w #5652,%d0
 	move.l %d0,%a2
 	sub.l %d2,%a2
 	add.l #268435460,%a2
-.L264:
+.L273:
 	move.b (%a2,%a0.l),%d0
 	move.b %d0,(%a0)+
 	cmp.l %a0,%d1
-	jeq .L263
+	jeq .L272
 	move.b (%a2,%a0.l),%d0
 	move.b %d0,(%a0)+
 	cmp.l %a0,%d1
-	jne .L264
-	jra .L263
-.L277:
+	jne .L273
+	jra .L272
+.L286:
 	lsl.l #3,%d0
 	mvz.b 1(%a5),%d7
 	move.l #.LC2,%d1
@@ -1478,11 +1521,11 @@ sl_load:
 	jsr (%a2)
 	lea (20,%sp),%sp
 	tst.l %d0
-	jeq .L292
-.L268:
+	jeq .L301
+.L277:
 	addq.l #1,%d0
 	tst.l %d0
-	jne .L269
+	jne .L278
 	clr.b %d7
 	mvz.b 8(%a4),%d0
 	move.l %d0,-(%sp)
@@ -1494,20 +1537,20 @@ sl_load:
 	movem.l (%sp),#31996
 	lea (52,%sp),%sp
 	rts
-.L291:
+.L300:
 	move.l %d3,%d1
-	add.l #11252,%d1
+	add.l #11254,%d1
 	add.l %a4,%d1
 	move.l #268475023,%a1
 	sub.l %d1,%a1
 	move.l %d1,%a0
 	add.l #5652,%d1
-.L276:
+.L285:
 	move.b (%a0)+,%d0
 	move.b %d0,(%a1,%a0.l)
 	cmp.l %d1,%a0
-	jne .L276
-	move.b %d7,5309(%a4)
+	jne .L285
+	move.b %d7,5311(%a4)
 	move.l #268525900,%a0
 	moveq #127,%d7
 	move.b (%a0),%d0
@@ -1515,7 +1558,7 @@ sl_load:
 	move.b %d0,(%a0)
 	move.w #257,%d0
 	move.w %d0,5296(%a4)
-	jra .L293
+	jra .L302
 	.size	sl_load, .-sl_load
 	.align	2
 	.type	text, @function
@@ -1526,7 +1569,7 @@ text:
 	add.l #16,%d4
 	move.l #1074524426,%a0
 	move.l %d4,%a6
-.L295:
+.L304:
 	move.l %a0,%a1
 	moveq #24,%d1
 	move.b (%a1)+,%d0
@@ -1545,7 +1588,7 @@ text:
 	or.l %d1,%d0
 	move.l %d0,(%a6)+
 	cmp.l #1074524454,%a0
-	jne .L295
+	jne .L304
 	move.l 60(%sp),-(%sp)
 	mov3q.l #-1,-(%sp)
 	moveq #59,%d0
@@ -1582,30 +1625,30 @@ stopped:
 	move.l %a1,%d2
 	or.l %d2,%d0
 	or.l %d1,%d0
-	jne .L302
+	jne .L311
 	move.l #-2147463394,%a0
 	move.l #-2147457792,%a1
-.L300:
+.L309:
 	addq.l #1,%a1
 	tst.b -1(%a1)
-	jne .L302
+	jne .L311
 	lea (84,%a0),%a0
 	tst.b -84(%a0)
-	jne .L302
+	jne .L311
 	cmp.l #-2147462050,%a0
-	jne .L300
+	jne .L309
 	move.l (%sp)+,%d2
 	mov3q.l #1,%d0
 	rts
-.L302:
+.L311:
 	move.l (%sp)+,%d2
 	clr.l %d0
 	rts
 	.size	stopped, .-stopped
 	.section	.rodata.str1.1
-.LC10:
-	.string	"STOP TO READ SETLISTS"
 .LC11:
+	.string	"STOP TO READ SETLISTS"
+.LC12:
 	.string	"READING SETLISTS"
 	.text
 	.align	2
@@ -1615,21 +1658,21 @@ lists_ready:
 	move.l %d2,-(%sp)
 	move.l 12(%sp),%a0
 	tst.b 4971(%a0)
-	jne .L316
+	jne .L325
 	move.l (%sp)+,%d2
 	mov3q.l #1,%d1
 	move.l %d1,%d0
 	addq.l #4,%sp
 	rts
-.L316:
+.L325:
 	jsr stopped
 	tst.l %d0
-	jeq .L317
+	jeq .L326
 	move.l 12(%sp),%a0
 	tst.b 4972(%a0)
-	jne .L310
+	jne .L319
 	tst.b 9(%a0)
-	jge .L310
+	jge .L319
 	clr.l -(%sp)
 	moveq #-7,%d2
 	move.l %d0,8(%sp)
@@ -1637,15 +1680,15 @@ lists_ready:
 	addq.l #4,%sp
 	move.l 4(%sp),%d1
 	cmp.l %d0,%d2
-	jeq .L318
+	jeq .L327
 	tst.l %d0
-	jlt .L310
+	jlt .L319
 	moveq #1,%d0
 	move.l 12(%sp),%a0
 	move.b %d0,4972(%a0)
-.L310:
+.L319:
 	pea 48.w
-	pea .LC11
+	pea .LC12
 	jsr 1074111160
 	addq.l #8,%sp
 	move.l (%sp)+,%d2
@@ -1653,9 +1696,9 @@ lists_ready:
 	move.l %d1,%d0
 	addq.l #4,%sp
 	rts
-.L317:
+.L326:
 	pea 48.w
-	pea .LC10
+	pea .LC11
 	move.l %d0,12(%sp)
 	jsr 1074111160
 	addq.l #8,%sp
@@ -1664,7 +1707,7 @@ lists_ready:
 	move.l (%sp)+,%d2
 	addq.l #4,%sp
 	rts
-.L318:
+.L327:
 	clr.b %d0
 	move.l 12(%sp),%a0
 	move.b %d0,4971(%a0)
@@ -1673,105 +1716,6 @@ lists_ready:
 	addq.l #4,%sp
 	rts
 	.size	lists_ready, .-lists_ready
-	.align	2
-	.type	ready, @function
-ready:
-	move.l %a2,-(%sp)
-	move.l #1095979829,%d0
-	move.l st_at,%a2
-	move.l %d2,-(%sp)
-	cmp.l (%a2),%d0
-	jeq .L326
-	move.l %a2,%d1
-	move.l %a2,%a0
-	add.l #100674,%d1
-.L322:
-	clr.b (%a0)+
-	cmp.l %d1,%a0
-	jne .L322
-	st %d2
-	move.l #100674,%d0
-	move.l #1095979829,(%a2)
-	move.l %d0,4(%a2)
-	move.b %d2,9(%a2)
-	move.b 269455136,%d0
-	move.b 269455137,%d1
-	move.w %d1,%a0
-	move.b 269455138,%d1
-	mvz.b 269455139,%d2
-	move.l %d2,%a1
-	st %d2
-	mvz.b %d1,%d1
-	lsl.l #8,%d1
-	move.b %d2,38(%a2)
-	move.b %d2,5295(%a2)
-	move.b %d2,5299(%a2)
-	moveq #1,%d2
-	move.b %d2,4971(%a2)
-	moveq #24,%d2
-	lsl.l %d2,%d0
-	move.w %a0,%d2
-	mvz.b %d2,%d2
-	swap %d2
-	clr.w %d2
-	or.l %d2,%d0
-	move.l %a1,%d2
-	or.l %d2,%d0
-	or.l %d1,%d0
-	move.l %d0,evlog
-	move.b 1175263980,%d0
-	move.b 1175263981,%d1
-	move.w %d1,%a0
-	move.b 1175263982,%d1
-	mvz.b 1175263983,%d2
-	move.l %d2,%a1
-	move.w #4000,%d2
-	mvz.b %d1,%d1
-	lsl.l #8,%d1
-	move.w %d2,50(%a2)
-	moveq #24,%d2
-	lsl.l %d2,%d0
-	move.w %a0,%d2
-	mvz.b %d2,%d2
-	swap %d2
-	clr.w %d2
-	or.l %d2,%d0
-	move.l %a1,%d2
-	or.l %d2,%d0
-	or.l %d1,%d0
-	sne %d0
-	neg.l %d0
-	move.b %d0,43(%a2)
-	move.l %a2,-(%sp)
-	jsr title_follow
-	addq.l #4,%sp
-.L319:
-	move.l (%sp)+,%d2
-	move.l %a2,%d0
-	move.l (%sp)+,%a2
-	rts
-.L326:
-	move.l #100674,%d1
-	cmp.l 4(%a2),%d1
-	jeq .L319
-	move.l %a2,%d1
-	move.l %a2,%a0
-	add.l #100674,%d1
-	jra .L322
-	.size	ready, .-ready
-	.align	2
-	.globl	as_list_named
-	.type	as_list_named, @function
-as_list_named:
-	jsr ready
-	tst.l 4(%sp)
-	jeq .L327
-	moveq #1,%d1
-	move.l %d0,%a0
-	move.b %d1,4970(%a0)
-.L327:
-	rts
-	.size	as_list_named, .-as_list_named
 	.align	2
 	.type	remember, @function
 remember:
@@ -1829,20 +1773,20 @@ remember:
 	lea (18,%a0),%a1
 	move.b (%a1),269455126
 	tst.b 5296(%a0)
-	jne .L337
+	jne .L331
 	tst.b 4974(%a0)
 	sne %d0
 	move.l #268435460,%a0
 	neg.l %d0
 	move.b %d0,269455127
 	move.l #-2128831035,%d0
-.L336:
+.L330:
 	mvz.b (%a0)+,%d1
 	eor.l %d1,%d0
 	move.l #16777619,%d1
 	muls.l %d1,%d0
 	cmp.l #268525900,%a0
-	jne .L336
+	jne .L330
 	move.l %d0,%d2
 	moveq #24,%d1
 	clr.w %d2
@@ -1858,27 +1802,125 @@ remember:
 	movem.l (%sp),#15372
 	lea (24,%sp),%sp
 	rts
-.L337:
+.L331:
 	moveq #1,%d0
 	move.l #268435460,%a0
 	move.b %d0,269455127
 	move.l #-2128831035,%d0
-	jra .L336
+	jra .L330
 	.size	remember, .-remember
-	.section	.rodata.str1.1
-.LC12:
-	.string	"arrbook"
-	.text
+	.align	2
+	.type	ready, @function
+ready:
+	move.l %a2,-(%sp)
+	move.l #1095979829,%d0
+	move.l st_at,%a2
+	move.l %d2,-(%sp)
+	cmp.l (%a2),%d0
+	jeq .L342
+	move.l %a2,%d1
+	move.l %a2,%a0
+	add.l #100676,%d1
+.L338:
+	clr.b (%a0)+
+	cmp.l %d1,%a0
+	jne .L338
+	st %d2
+	move.l #100676,%d0
+	move.l #1095979829,(%a2)
+	move.l %d0,4(%a2)
+	move.b %d2,9(%a2)
+	move.b 269455136,%d0
+	move.b 269455137,%d1
+	move.w %d1,%a0
+	move.b 269455138,%d1
+	mvz.b 269455139,%d2
+	move.l %d2,%a1
+	st %d2
+	mvz.b %d1,%d1
+	lsl.l #8,%d1
+	move.b %d2,38(%a2)
+	move.b %d2,5295(%a2)
+	move.b %d2,5299(%a2)
+	move.b %d2,5303(%a2)
+	moveq #1,%d2
+	move.b %d2,4971(%a2)
+	moveq #24,%d2
+	lsl.l %d2,%d0
+	move.w %a0,%d2
+	mvz.b %d2,%d2
+	swap %d2
+	clr.w %d2
+	or.l %d2,%d0
+	move.l %a1,%d2
+	or.l %d2,%d0
+	or.l %d1,%d0
+	move.l %d0,evlog
+	move.b 1175263980,%d0
+	move.b 1175263981,%d1
+	move.w %d1,%a0
+	move.b 1175263982,%d1
+	mvz.b 1175263983,%d2
+	move.l %d2,%a1
+	move.w #4000,%d2
+	mvz.b %d1,%d1
+	lsl.l #8,%d1
+	move.w %d2,50(%a2)
+	moveq #24,%d2
+	lsl.l %d2,%d0
+	move.w %a0,%d2
+	mvz.b %d2,%d2
+	swap %d2
+	clr.w %d2
+	or.l %d2,%d0
+	move.l %a1,%d2
+	or.l %d2,%d0
+	or.l %d1,%d0
+	sne %d0
+	neg.l %d0
+	move.b %d0,43(%a2)
+	move.l %a2,-(%sp)
+	jsr title_follow
+	addq.l #4,%sp
+.L335:
+	move.l (%sp)+,%d2
+	move.l %a2,%d0
+	move.l (%sp)+,%a2
+	rts
+.L342:
+	move.l #100676,%d1
+	cmp.l 4(%a2),%d1
+	jeq .L335
+	move.l %a2,%d1
+	move.l %a2,%a0
+	add.l #100676,%d1
+	jra .L338
+	.size	ready, .-ready
+	.align	2
+	.globl	as_list_named
+	.type	as_list_named, @function
+as_list_named:
+	jsr ready
+	tst.l 4(%sp)
+	jeq .L343
+	moveq #1,%d1
+	move.l %d0,%a0
+	move.b %d1,4970(%a0)
+.L343:
+	rts
+	.size	as_list_named, .-as_list_named
 	.align	2
 	.type	read_place, @function
 read_place:
-	lea (-24,%sp),%sp
+	st %d0
+	lea (-28,%sp),%sp
 	movem.l #7180,(%sp)
-	move.l 28(%sp),%a2
-	move.l #96034,%a0
+	move.l 32(%sp),%a2
+	move.l #96036,%a0
 	pea .LC2
-	pea .LC12
+	pea .LC3
 	add.l %a2,%a0
+	move.b %d0,5303(%a2)
 	move.l %a0,-(%sp)
 	jsr project_file
 	pea 24.w
@@ -1889,7 +1931,7 @@ read_place:
 	move.l evlog,%d1
 	lsl.l #4,%d1
 	tst.l %d0
-	jeq .L350
+	jeq .L361
 	mov3q.l #5,%d0
 	or.l %d1,%d0
 	moveq #24,%d3
@@ -1897,81 +1939,110 @@ read_place:
 	move.l #269455137,%a3
 	move.l #269455138,%a1
 	move.l #269455139,%a0
-	move.l %d0,%d2
 	move.l %d0,%d1
-	clr.w %d2
-	swap %d2
-	lsr.l %d3,%d1
+	move.l %d0,%d2
+	clr.w %d1
+	swap %d1
+	lsr.l %d3,%d2
 	move.l %d0,evlog
-	move.l %d1,20(%sp)
+	move.l %d1,24(%sp)
+	move.b %d2,(%a4)
 	move.l %d0,%d1
 	lsr.l #8,%d1
-	move.b 23(%sp),(%a4)
-	move.b %d2,(%a3)
+	moveq #15,%d2
+	move.b 27(%sp),(%a3)
 	move.b %d1,(%a1)
 	move.b %d0,(%a0)
-	moveq #15,%d2
 	move.b 62(%a2),%d1
 	move.l evlog,%d0
 	lsl.l #4,%d0
 	and.l %d2,%d1
+	moveq #24,%d2
 	or.l %d1,%d0
-	move.l %d0,%d2
+	move.l %d0,%d3
 	move.l %d0,%d1
-	clr.w %d2
-	swap %d2
-	lsr.l %d3,%d1
+	clr.w %d3
+	swap %d3
+	lsr.l %d2,%d1
 	move.l %d0,evlog
 	move.l %d1,20(%sp)
 	move.l %d0,%d1
 	lsr.l #8,%d1
+	move.l %d3,24(%sp)
 	move.b 23(%sp),(%a4)
-	move.b %d2,(%a3)
+	move.b %d3,(%a3)
 	move.b %d1,(%a1)
+	moveq #65,%d3
 	move.b %d0,(%a0)
-	moveq #65,%d2
 	mvz.b 58(%a2),%d0
-	cmp.l %d0,%d2
-	jne .L343
+	cmp.l %d0,%d3
+	jne .L352
 	mvz.b 59(%a2),%d0
-	moveq #83,%d3
-	cmp.l %d0,%d3
-	jne .L343
-	mvz.b 60(%a2),%d0
-	moveq #66,%d1
+	moveq #83,%d1
 	cmp.l %d0,%d1
-	jne .L343
-	mvz.b 61(%a2),%d0
-	moveq #80,%d2
+	jne .L352
+	mvz.b 60(%a2),%d0
+	moveq #66,%d2
 	cmp.l %d0,%d2
-	jne .L343
-	mvz.b 62(%a2),%d0
-	moveq #15,%d3
+	jne .L352
+	mvz.b 61(%a2),%d0
+	moveq #80,%d3
 	cmp.l %d0,%d3
-	jcs .L343
+	jne .L352
+	mvz.b 62(%a2),%d0
+	moveq #15,%d1
+	cmp.l %d0,%d1
+	jcs .L352
 	lea (22,%a2),%a0
 	lea (38,%a2),%a1
-.L346:
+.L355:
 	move.b 41(%a0),%d1
 	mov3q.l #7,%d2
 	and.l %d2,%d1
 	move.b %d1,(%a0)+
 	cmp.l %a1,%a0
-	jne .L346
+	jne .L355
 	move.b 79(%a2),%d1
-	mov3q.l #1,%d3
-	eor.l %d3,%d1
+	mov3q.l #1,%d2
+	move.b 80(%a2),%d3
+	eor.l %d2,%d1
+	move.w %d3,%a0
 	tst.b %d1
 	seq %d1
 	neg.l %d1
-	move.l %d1,%d2
-	lsl.l #8,%d2
-	move.b %d1,%d2
-	move.w %d2,42(%a2)
-	movem.l (%sp),#7180
-	lea (24,%sp),%sp
-	rts
+	move.b %d1,42(%a2)
+	tst.b %d3
+	jlt .L362
+	move.b 81(%a2),%d3
+	move.w #-1,%a0
+	move.b %d1,43(%a2)
+	move.w %d3,%a1
+	moveq #15,%d3
+	move.w %a0,%d2
+	move.l %a1,%d1
+	and.l %d3,%d1
+	move.b %d2,5303(%a2)
+	move.b %d1,5304(%a2)
 .L350:
+	movem.l (%sp),#7180
+	lea (28,%sp),%sp
+	rts
+.L362:
+	move.l %a0,%d3
+	moveq #15,%d2
+	and.l %d2,%d3
+	move.b %d1,43(%a2)
+	move.l %d3,%a0
+	move.b 81(%a2),%d3
+	move.w %a0,%d2
+	move.w %d3,%a1
+	moveq #15,%d3
+	move.b %d2,5303(%a2)
+	move.l %a1,%d1
+	and.l %d3,%d1
+	move.b %d1,5304(%a2)
+	jra .L350
+.L361:
 	mov3q.l #6,%d0
 	or.l %d0,%d1
 	moveq #24,%d0
@@ -1987,10 +2058,10 @@ read_place:
 	move.b %d2,269455137
 	move.b %d0,269455138
 	move.b %d1,269455139
-.L343:
+.L352:
 	movem.l (%sp),#7180
 	mov3q.l #-1,%d0
-	lea (24,%sp),%sp
+	lea (28,%sp),%sp
 	rts
 	.size	read_place, .-read_place
 	.align	2
@@ -1998,279 +2069,135 @@ read_place:
 	.type	as_writer, @function
 as_writer:
 	lea (-60,%sp),%sp
-	movem.l #31996,(%sp)
+	movem.l #23804,(%sp)
 	jsr ready
 	move.l %d0,%a6
 	tst.b 4971(%a6)
-	jne .L460
-.L352:
+	jne .L465
+.L364:
 	tst.b 4972(%a6)
-	jeq .L353
+	jeq .L365
 	clr.b %d0
 	moveq #1,%d1
 	move.b %d0,4972(%a6)
 	move.b %d1,54(%a6)
-.L353:
+.L365:
 	tst.b 4974(%a6)
-	jne .L461
+	jne .L466
 	tst.b 5296(%a6)
-	jne .L462
+	jne .L467
 	tst.b 5295(%a6)
-	jlt .L372
+	jlt .L384
 	moveq #1,%d1
 	move.b %d1,54(%a6)
-.L372:
+.L384:
 	move.b 9(%a6),%d2
-	jmi .L373
-	moveq #1,%d6
-	move.b %d6,54(%a6)
-.L373:
+	jmi .L385
+	moveq #1,%d5
+	move.b %d5,54(%a6)
+.L385:
 	move.b 8(%a6),%d0
-	move.l %a6,%d5
-	add.l #96034,%d5
-	tst.b %d0
-	jne .L374
+	jne .L386
 	tst.b 18(%a6)
-	jeq .L463
+	jeq .L468
 	move.b 268525900,%d0
-	jne .L464
+	jne .L469
 	tst.b %d2
-	jlt .L388
+	jlt .L400
 	move.b 269161681,%d1
-	mov3q.l #7,%d6
+	mov3q.l #7,%d5
 	mvs.b %d2,%d3
 	clr.l %d4
-	and.l %d6,%d1
+	and.l %d5,%d1
 	move.b %d1,22(%a6)
-.L391:
+.L403:
 	move.b %d0,11(%a6)
-.L392:
+.L404:
 	tst.l %d3
-	jne .L395
+	jne .L407
 	tst.b 11(%a6)
-	jne .L465
-.L395:
+	jne .L470
+.L407:
 	move.l %d3,-(%sp)
 	move.l %a6,-(%sp)
 	jsr (read_book.constprop.0)
 	clr.b %d1
 	addq.l #8,%sp
-	move.l %d0,%d7
+	move.l %d0,%d6
 	move.b %d1,268525900
-.L399:
+.L411:
 	move.b %d2,8(%a6)
 	mov3q.l #1,%d0
-	eor.l %d7,%d0
+	eor.l %d6,%d0
 	moveq #1,%d2
-	move.b %d7,54(%a6)
+	move.b %d6,54(%a6)
 	move.b %d0,18(%a6)
 	move.b %d2,19(%a6)
-	tst.l %d7
-	jne .L401
+	tst.l %d6
+	jne .L413
 	move.b %d2,10(%a6)
-.L401:
+.L413:
 	st %d0
 	mov3q.l #1,%d2
 	moveq #9,%d1
 	move.b %d0,9(%a6)
-.L377:
+.L389:
 	move.l evlog,%d0
 	lsl.l #4,%d0
 	or.l %d1,%d0
 	moveq #24,%d1
 	move.l %d0,%d3
-	move.l %d0,%d6
+	move.l %d0,%d5
 	clr.w %d3
 	swap %d3
-	lsr.l %d1,%d6
+	lsr.l %d1,%d5
 	move.l %d0,%d1
 	lsr.l #8,%d1
 	move.l %d0,evlog
-	move.b %d6,269455136
+	move.b %d5,269455136
 	move.b %d3,269455137
 	move.b %d1,269455138
 	move.b %d0,269455139
 	tst.l %d2
-	jne .L402
+	jne .L414
 	move.b 269161681,%d0
 	mov3q.l #7,%d2
 	mvz.b 8(%a6),%d1
 	and.l %d2,%d0
 	move.b %d0,22(%a6,%d1.l)
-.L402:
+.L414:
 	move.l %a6,%d7
 	add.l #106,%d7
 	move.l %sp,%d1
 	move.l %d7,%d6
-	lea (90,%a6),%a4
+	lea (90,%a6),%a3
 	add.l #60,%d1
-.L403:
-	tst.b (%a4)+
-	jeq .L410
+.L415:
+	tst.b (%a3)+
+	jeq .L422
 	move.l %d6,%a2
-	sub.l %a3,%a3
-.L408:
+	clr.l %d5
+.L420:
 	mvz.b (%a2),%d2
 	mvz.b 8(%a6),%d0
 	cmp.l %d2,%d0
-	jeq .L466
-	mvz.b -1(%a4),%d0
-	addq.l #1,%a3
+	jeq .L471
+	mvz.b -1(%a3),%d0
+	addq.l #1,%d5
 	lea (18,%a2),%a2
-	cmp.l %a3,%d0
-	jhi .L408
-.L410:
+	cmp.l %d5,%d0
+	jhi .L420
+.L422:
 	add.l #288,%d6
-	cmp.l %d7,%a4
-	jne .L403
+	cmp.l %d7,%a3
+	jne .L415
 	tst.b 4970(%a6)
-	jne .L446
-	lea project_file,%a3
-	lea put_data,%a2
-.L411:
-	move.b 8(%a6),62(%a6)
-	move.l #1095975504,%d6
-	move.l %a6,%d1
-	add.l #38,%d1
-	move.l %d6,58(%a6)
-	lea (22,%a6),%a0
-.L412:
-	move.b (%a0)+,%d0
-	move.b %d0,40(%a0)
-	cmp.l %d1,%a0
-	jne .L412
-	move.b 43(%a6),79(%a6)
-	pea .LC2
-	pea .LC12
-	move.l %d5,-(%sp)
-	jsr (%a3)
-	pea 24.w
-	pea 58(%a6)
-	move.l %a6,-(%sp)
-	jsr (%a2)
-	lea (24,%sp),%sp
-	tst.b 5295(%a6)
-	jlt .L413
-	tst.l %d4
-	jlt .L413
-	tst.b 18(%a6)
-	jeq .L467
-.L413:
-	st %d1
-	move.b %d1,5295(%a6)
-	move.l %a6,-(%sp)
-	jsr remember
-	addq.l #4,%sp
-.L351:
-	move.l %d4,%d0
-	movem.l (%sp),#31996
-	lea (60,%sp),%sp
-	rts
-.L460:
-	move.l %d0,-(%sp)
-	jsr read_lists
-	addq.l #4,%sp
-	jra .L352
-.L374:
-	tst.b 71(%sp)
-	jeq .L468
-.L381:
-	mvz.b %d0,%d0
-	tst.b 18(%a6)
-	jeq .L383
-	move.l %d0,-(%sp)
-	move.l %a6,-(%sp)
-	jsr write_changed
-	addq.l #8,%sp
-	move.l %d0,%d2
-.L384:
-	tst.l %d2
-	jeq .L379
-	clr.b %d2
-	move.b %d2,268525900
-	move.b 9(%a6),%d2
-	jmi .L388
-.L380:
-	move.b 269161681,%d1
-	move.b 8(%a6),%d0
-	mov3q.l #7,%d6
-	mvs.b %d2,%d3
-	clr.l %d4
-	and.l %d6,%d1
-	mvz.b %d0,%d6
-	move.b %d1,22(%a6,%d6.l)
-	tst.b %d0
-	jne .L392
-.L477:
-	tst.b 18(%a6)
-	jne .L391
-	mov3q.l #1,%d6
-	clr.l %d7
-	lea arr_path,%a3
-	lea arr_write,%a4
-.L394:
-	pea .LC9
-	move.l %d7,%a2
-	addq.l #1,%d7
-	move.l %d7,-(%sp)
-	move.l %d5,-(%sp)
-	jsr (%a3)
-	move.l %a2,-(%sp)
-	move.l %a6,-(%sp)
-	jsr (%a4)
-	lea (20,%sp),%sp
-	and.l %d0,%d6
-	moveq #8,%d0
-	cmp.l %d7,%d0
-	jne .L394
-	move.b %d6,%d0
-	move.b %d0,11(%a6)
-	jra .L392
-.L462:
-	tst.b 5298(%a6)
-	jne .L469
-	tst.b 4970(%a6)
-	jne .L453
-.L370:
-	move.l %a6,-(%sp)
-	jsr remember
-	addq.l #4,%sp
-	clr.l %d4
-.L470:
-	move.l %d4,%d0
-	movem.l (%sp),#31996
-	lea (60,%sp),%sp
-	rts
-.L461:
-	moveq #1,%d2
-	mvz.b 8(%a6),%d0
-	clr.b %d6
-	move.b %d2,54(%a6)
-	clr.w %d2
-	move.l %d0,-(%sp)
-	move.l %a6,-(%sp)
-	jsr (read_book.constprop.0)
-	move.b %d6,268525900
-	addq.l #8,%sp
-	mov3q.l #1,%d1
-	eor.l %d0,%d1
-	move.w %d2,4973(%a6)
-	move.b %d1,18(%a6)
-	tst.l %d0
-	jne .L355
-	moveq #1,%d6
-	move.b %d6,10(%a6)
-.L355:
-	moveq #1,%d0
-	move.b %d0,19(%a6)
-	tst.b 4970(%a6)
-	jeq .L370
-.L453:
+	jeq .L423
 	move.l #1095978034,%d1
 	move.l %d1,82(%a6)
-	move.l #96034,%a0
+	move.l #96036,%a0
 	pea .LC2
-	pea .LC3
+	pea .LC4
 	add.l %a6,%a0
 	move.l %a0,-(%sp)
 	jsr project_file
@@ -2280,49 +2207,167 @@ as_writer:
 	jsr put_data
 	lea (24,%sp),%sp
 	tst.l %d0
-	jeq .L370
+	jeq .L423
 	clr.b %d0
-	clr.l %d4
 	move.b %d0,4970(%a6)
+.L423:
+	move.l %a6,-(%sp)
+	jsr write_place
+	addq.l #4,%sp
+	tst.b 5295(%a6)
+	jlt .L424
+	tst.l %d4
+	jlt .L424
+	tst.b 18(%a6)
+	jeq .L472
+.L424:
+	st %d2
+	move.b %d2,5295(%a6)
 	move.l %a6,-(%sp)
 	jsr remember
 	addq.l #4,%sp
-	jra .L470
-.L468:
-	tst.b 268525900.l
-	jne .L381
-	tst.b %d2
-	jlt .L388
-	move.b 269161681,%d1
-	mov3q.l #7,%d6
+.L363:
+	move.l %d4,%d0
+	movem.l (%sp),#23804
+	lea (60,%sp),%sp
+	rts
+.L465:
+	move.l %d0,-(%sp)
+	jsr read_lists
+	addq.l #4,%sp
+	jra .L364
+.L386:
+	tst.b 71(%sp)
+	jeq .L473
+.L393:
 	mvz.b %d0,%d0
+	tst.b 18(%a6)
+	jeq .L395
+	move.l %d0,-(%sp)
+	move.l %a6,-(%sp)
+	jsr write_changed
+	addq.l #8,%sp
+	move.l %d0,%d2
+.L396:
+	tst.l %d2
+	jeq .L391
+	clr.b %d1
+	move.b %d1,268525900
+	move.b 9(%a6),%d2
+	jmi .L400
+.L392:
+	move.b 269161681,%d1
+	move.b 8(%a6),%d0
+	mov3q.l #7,%d5
 	mvs.b %d2,%d3
 	clr.l %d4
-	and.l %d6,%d1
-	move.b %d1,22(%a6,%d0.l)
-	jra .L392
-.L463:
-	move.l 76(%sp),-(%sp)
-	move.l 76(%sp),-(%sp)
-	move.l 76(%sp),-(%sp)
-	move.l 76(%sp),-(%sp)
-	jsr as_stock_writer
-	lea (16,%sp),%sp
-	move.b 9(%a6),%d2
-	move.l %d0,%d4
-	tst.b %d2
-	jlt .L449
+	and.l %d5,%d1
+	mvz.b %d0,%d5
+	move.b %d1,22(%a6,%d5.l)
+	tst.b %d0
+	jne .L404
+.L485:
+	tst.b 18(%a6)
+	jne .L403
+	move.l #96036,%a2
+	mov3q.l #1,%d5
+	add.l %a6,%a2
+	clr.l %d7
+	lea arr_path,%a4
+	move.l #arr_write,%d6
+.L406:
+	pea .LC10
+	move.l %d7,%a3
+	addq.l #1,%d7
+	move.l %d7,-(%sp)
+	move.l %a2,-(%sp)
+	jsr (%a4)
+	move.l %a3,-(%sp)
+	move.l %a6,-(%sp)
+	move.l %d6,%a0
+	jsr (%a0)
+	lea (20,%sp),%sp
+	and.l %d0,%d5
+	moveq #8,%d0
+	cmp.l %d7,%d0
+	jne .L406
+	move.b %d5,%d0
+	move.b %d0,11(%a6)
+	jra .L404
+.L467:
+	tst.b 5298(%a6)
+	jne .L474
+	tst.b 4970(%a6)
+	jne .L475
+.L382:
+	move.l %a6,-(%sp)
+	jsr write_place
+	move.l %a6,-(%sp)
+	jsr remember
+	addq.l #8,%sp
+.L369:
+	clr.l %d4
+.L477:
+	move.l %d4,%d0
+	movem.l (%sp),#23804
+	lea (60,%sp),%sp
+	rts
+.L466:
+	moveq #1,%d2
+	mvz.b 8(%a6),%d0
+	clr.b %d5
+	move.b %d2,54(%a6)
+	clr.w %d2
+	move.l %d0,-(%sp)
+	move.l %a6,-(%sp)
+	jsr (read_book.constprop.0)
+	move.b %d5,268525900
+	addq.l #8,%sp
+	mov3q.l #1,%d1
+	eor.l %d0,%d1
+	move.w %d2,4973(%a6)
+	move.b %d1,18(%a6)
 	tst.l %d0
-	jge .L471
-	moveq #1,%d6
-	move.b %d6,10(%a6)
+	jne .L367
+	moveq #1,%d5
+	move.b %d5,10(%a6)
+.L367:
+	moveq #1,%d0
+	move.b %d0,19(%a6)
+	tst.b 4970(%a6)
+	jne .L476
+.L368:
+	move.l %a6,-(%sp)
+	jsr remember
+	addq.l #4,%sp
+.L481:
+	clr.l %d4
+	jra .L477
 .L475:
-	st %d0
-	mov3q.l #1,%d2
-	moveq #9,%d1
-	move.b %d0,9(%a6)
-	jra .L377
-.L469:
+	move.l #1095978034,%d1
+	move.l %d1,82(%a6)
+	move.l #96036,%a0
+	pea .LC2
+	pea .LC4
+	add.l %a6,%a0
+	move.l %a0,-(%sp)
+	jsr project_file
+	pea 4888.w
+	pea 82(%a6)
+	move.l %a6,-(%sp)
+	jsr put_data
+	lea (24,%sp),%sp
+	tst.l %d0
+	jeq .L382
+	clr.b %d0
+	move.b %d0,4970(%a6)
+	move.l %a6,-(%sp)
+	jsr write_place
+	move.l %a6,-(%sp)
+	jsr remember
+	addq.l #8,%sp
+	jra .L369
+.L474:
 	moveq #1,%d1
 	lea take_back,%a2
 	move.b %d1,54(%a6)
@@ -2334,67 +2379,66 @@ as_writer:
 	jsr (%a2)
 	lea (16,%sp),%sp
 	tst.b 5300(%a6)
-	jeq .L414
-	mvs.w #-5600,%d5
-	move.l %a6,%d7
+	jeq .L425
+	mvs.w #-5602,%d5
+	move.l %a6,%d6
 	move.l %a6,%d2
-	add.l #96034,%d7
-	lea (5312,%a6),%a3
-	add.l #11252,%d2
+	add.l #96036,%d6
+	lea (5314,%a6),%a3
+	add.l #11254,%d2
 	sub.l %a6,%d5
 	mov3q.l #1,%d4
-	lea (5313,%a6),%a2
+	lea (5315,%a6),%a2
 	clr.l %d3
-	lea arr_path,%a5
 	lea arr_write,%a4
-.L366:
-	mvz.w 5310(%a6),%d0
-	mov3q.l #1,%d6
+.L378:
+	mvz.w 5312(%a6),%d0
+	mov3q.l #1,%d7
 	asr.l %d3,%d0
-	and.l %d0,%d6
+	and.l %d0,%d7
 	btst #0,%d0
-	jeq .L361
+	jeq .L373
 	move.b (%a3),%d0
-	jne .L447
+	jne .L455
 	tst.b 8(%a6)
-	jeq .L447
+	jeq .L455
 	tst.b 11(%a6)
-	jeq .L447
+	jeq .L455
 	mvz.b %d0,%d0
-	move.l #.LC9,%d1
+	move.l #.LC10,%d1
 	move.l %d1,-(%sp)
 	mvz.b (%a2),%d1
 	lsl.l #3,%d0
 	move.l %d1,%a0
 	pea 1(%a0,%d0.l)
-	move.l %d7,-(%sp)
-	jsr (%a5)
+	move.l %d6,-(%sp)
+	jsr arr_path
 	mov3q.l #7,-(%sp)
 	move.l %a6,-(%sp)
 	jsr arr_read
 	lea (20,%sp),%sp
 	addq.l #1,%d0
 	tst.l %d0
-	jeq .L416
-.L474:
+	jeq .L427
+.L482:
 	move.l %d5,%d0
 	neg.l %d0
 	move.l %d5,%a1
 	move.l %d0,%a0
 	add.l #268475023,%a1
-.L365:
+.L377:
 	move.b (%a0)+,%d0
 	move.b %d0,(%a1,%a0.l)
 	cmp.l %a0,%d2
-	jne .L365
+	jne .L377
 	mov3q.l #7,-(%sp)
 	move.l %a6,-(%sp)
 	jsr (%a4)
 	addq.l #8,%sp
 	and.l %d0,%d4
-	tst.l %d6
-	jne .L472
-.L361:
+	tst.l %d7
+	jne .L478
+.L373:
 	mvz.b 5300(%a6),%d0
 	addq.l #1,%d3
 	lea (18,%a3),%a3
@@ -2402,12 +2446,12 @@ as_writer:
 	add.l #5652,%d2
 	lea (18,%a2),%a2
 	cmp.l %d3,%d0
-	jhi .L366
-.L360:
+	jhi .L378
+.L372:
 	clr.w %d1
 	clr.b %d0
 	clr.b %d2
-	st %d6
+	st %d5
 	move.w %d1,5296(%a6)
 	move.b %d0,5298(%a6)
 	mvz.b 8(%a6),%d0
@@ -2418,106 +2462,162 @@ as_writer:
 	addq.l #8,%sp
 	move.b %d2,268525900
 	and.l %d4,%d0
-	move.b %d6,-2147457388
-	move.b %d6,-2147457387
-	move.b %d6,-2147457386
-	move.b %d6,-2147457385
+	move.b %d5,-2147457388
+	move.b %d5,-2147457387
+	move.b %d5,-2147457386
+	move.b %d5,-2147457385
 	move.b %d1,19(%a6)
 	tst.l %d0
-	jeq .L473
-.L367:
+	jeq .L479
+.L379:
 	move.b 5299(%a6),%d0
-	jpl .L369
+	jpl .L381
 	st %d2
 	move.b %d2,5299(%a6)
 	move.b %d2,5295(%a6)
 	tst.b 4970(%a6)
-	jeq .L370
-	jra .L453
-.L466:
+	jeq .L382
+	jra .L475
+.L468:
+	move.l 76(%sp),-(%sp)
+	move.l 76(%sp),-(%sp)
+	move.l 76(%sp),-(%sp)
+	move.l 76(%sp),-(%sp)
+	jsr as_stock_writer
+	lea (16,%sp),%sp
+	move.b 9(%a6),%d2
+	move.l %d0,%d4
+	tst.b %d2
+	jlt .L457
+	tst.l %d0
+	jge .L480
+	moveq #1,%d5
+	move.b %d5,10(%a6)
+.L483:
+	st %d0
+	mov3q.l #1,%d2
+	moveq #9,%d1
+	move.b %d0,9(%a6)
+	jra .L389
+.L476:
+	move.l #1095978034,%d1
+	move.l %d1,82(%a6)
+	move.l #96036,%a0
+	pea .LC2
+	pea .LC4
+	add.l %a6,%a0
+	move.l %a0,-(%sp)
+	jsr project_file
+	pea 4888.w
+	pea 82(%a6)
+	move.l %a6,-(%sp)
+	jsr put_data
+	lea (24,%sp),%sp
+	tst.l %d0
+	jeq .L368
+	clr.b %d0
+	move.b %d0,4970(%a6)
+	move.l %a6,-(%sp)
+	jsr remember
+	addq.l #4,%sp
+	jra .L481
+.L473:
+	tst.b 268525900.l
+	jne .L393
+	tst.b %d2
+	jlt .L400
+	move.b 269161681,%d1
+	mov3q.l #7,%d5
+	mvz.b %d0,%d0
+	mvs.b %d2,%d3
+	clr.l %d4
+	and.l %d5,%d1
+	move.b %d1,22(%a6,%d0.l)
+	jra .L404
+.L471:
 	mvz.b 1(%a2),%d0
 	lea (44,%sp),%a1
 	move.l %a1,%a0
 	mulu.w #5652,%d0
-	move.l %d0,%a5
-	sub.l %a1,%a5
-	add.l #268435460,%a5
-.L405:
-	move.b (%a5,%a0.l),%d0
+	move.l %d0,%a4
+	sub.l %a1,%a4
+	add.l #268435460,%a4
+.L417:
+	move.b (%a4,%a0.l),%d0
 	move.b %d0,(%a0)+
 	cmp.l %d1,%a0
-	jne .L405
+	jne .L417
 	lea (2,%a2),%a0
-.L407:
+.L419:
 	move.b (%a1)+,%d0
 	mvs.b (%a0)+,%d3
 	mvs.b %d0,%d2
 	cmp.l %d3,%d2
-	jeq .L406
+	jeq .L418
 	move.b %d0,-1(%a0)
 	moveq #1,%d0
 	move.b %d0,4970(%a6)
-.L406:
+.L418:
 	cmp.l %d1,%a1
-	jne .L407
-	mvz.b -1(%a4),%d0
-	addq.l #1,%a3
+	jne .L419
+	mvz.b -1(%a3),%d0
+	addq.l #1,%d5
 	lea (18,%a2),%a2
-	cmp.l %a3,%d0
-	jhi .L408
-	jra .L410
-.L467:
+	cmp.l %d5,%d0
+	jhi .L420
+	jra .L422
+.L472:
 	move.l %a6,-(%sp)
 	jsr sl_load
 	addq.l #4,%sp
 	tst.l %d0
-	jne .L413
-	moveq #1,%d0
-	st %d1
-	move.b %d0,10(%a6)
-	move.b %d1,5295(%a6)
+	jne .L424
+	moveq #1,%d1
+	st %d2
+	move.b %d1,10(%a6)
+	move.b %d2,5295(%a6)
 	move.l %a6,-(%sp)
 	jsr remember
 	addq.l #4,%sp
-	jra .L351
-.L464:
+	jra .L363
+.L469:
 	clr.l -(%sp)
 	move.l %a6,-(%sp)
 	jsr write_changed
 	addq.l #8,%sp
 	move.l %d0,%d2
 	tst.l %d0
-	jeq .L379
+	jeq .L391
 	clr.b %d0
 	move.b %d0,268525900
 	move.b 9(%a6),%d2
-	jpl .L380
-.L388:
+	jpl .L392
+.L400:
 	clr.l %d4
-.L449:
+.L457:
 	clr.l %d2
-.L454:
+.L459:
 	moveq #10,%d1
-	jra .L377
-.L447:
+	jra .L389
+.L455:
 	mvz.b %d0,%d0
 	move.l #.LC2,%d1
-	clr.l %d6
+	clr.l %d7
 	move.l %d1,-(%sp)
 	mvz.b (%a2),%d1
 	lsl.l #3,%d0
 	move.l %d1,%a0
 	pea 1(%a0,%d0.l)
-	move.l %d7,-(%sp)
-	jsr (%a5)
+	move.l %d6,-(%sp)
+	jsr arr_path
 	mov3q.l #7,-(%sp)
 	move.l %a6,-(%sp)
 	jsr arr_read
 	lea (20,%sp),%sp
 	addq.l #1,%d0
 	tst.l %d0
-	jne .L474
-.L416:
+	jne .L482
+.L427:
 	mvz.b 5300(%a6),%d0
 	clr.l %d4
 	addq.l #1,%d3
@@ -2526,9 +2626,9 @@ as_writer:
 	add.l #5652,%d2
 	lea (18,%a2),%a2
 	cmp.l %d3,%d0
-	jhi .L366
-	jra .L360
-.L472:
+	jhi .L378
+	jra .L372
+.L478:
 	pea .LC2
 	mvz.b (%a3),%d0
 	mvz.b (%a2),%d1
@@ -2540,8 +2640,8 @@ as_writer:
 	lea (18,%a2),%a2
 	move.l %d0,%a0
 	pea 1(%a0,%d1.l)
-	move.l %d7,-(%sp)
-	jsr (%a5)
+	move.l %d6,-(%sp)
+	jsr arr_path
 	mov3q.l #7,-(%sp)
 	move.l %a6,-(%sp)
 	jsr (%a4)
@@ -2549,157 +2649,147 @@ as_writer:
 	and.l %d0,%d4
 	mvz.b 5300(%a6),%d0
 	cmp.l %d3,%d0
-	jhi .L366
-	jra .L360
-.L379:
+	jhi .L378
+	jra .L372
+.L391:
 	mov3q.l #-1,%d4
 	tst.b 9(%a6)
-	jlt .L454
-	moveq #1,%d6
-	move.b %d6,10(%a6)
-	jra .L475
-.L446:
-	move.l #1095978034,%d1
-	move.l %d1,82(%a6)
-	pea .LC2
-	pea .LC3
-	move.l %d5,-(%sp)
-	lea project_file,%a3
-	jsr (%a3)
-	pea 4888.w
-	pea 82(%a6)
-	move.l %a6,-(%sp)
-	lea put_data,%a2
-	jsr (%a2)
-	lea (24,%sp),%sp
-	tst.l %d0
-	jeq .L411
-	clr.b %d2
-	move.l #1095975504,%d6
-	move.l %a6,%d1
-	add.l #38,%d1
-	move.b 8(%a6),62(%a6)
-	move.l %d6,58(%a6)
-	lea (22,%a6),%a0
-	move.b %d2,4970(%a6)
-	jra .L412
-.L383:
+	jlt .L459
+	moveq #1,%d5
+	move.b %d5,10(%a6)
+	jra .L483
+.L395:
 	lsl.l #3,%d0
+	move.l %a6,%d3
 	mov3q.l #1,%d2
-	sub.l %a5,%a5
-	lea arr_path,%a3
-	lea arr_write,%a4
+	add.l #96036,%d3
+	sub.l %a3,%a3
+	lea arr_path,%a4
+	move.l #arr_write,%d6
 	move.l %d0,%a2
 	addq.l #1,%a2
-.L385:
+.L397:
 	pea .LC2
-	pea (%a2,%a5.l)
-	move.l %d5,-(%sp)
-	jsr (%a3)
-	move.l %a5,-(%sp)
-	move.l %a6,-(%sp)
+	pea (%a2,%a3.l)
+	move.l %d3,-(%sp)
 	jsr (%a4)
-	addq.l #1,%a5
+	move.l %a3,-(%sp)
+	move.l %a6,-(%sp)
+	addq.l #1,%a3
+	move.l %d6,%a0
+	jsr (%a0)
 	lea (20,%sp),%sp
-	moveq #8,%d1
 	and.l %d0,%d2
-	cmp.l %a5,%d1
-	jeq .L384
+	moveq #8,%d0
+	cmp.l %a3,%d0
+	jeq .L396
 	pea .LC2
-	pea (%a2,%a5.l)
-	move.l %d5,-(%sp)
-	jsr (%a3)
-	move.l %a5,-(%sp)
-	move.l %a6,-(%sp)
+	pea (%a2,%a3.l)
+	move.l %d3,-(%sp)
 	jsr (%a4)
-	addq.l #1,%a5
+	move.l %a3,-(%sp)
+	move.l %a6,-(%sp)
+	addq.l #1,%a3
+	move.l %d6,%a0
+	jsr (%a0)
 	lea (20,%sp),%sp
-	moveq #8,%d1
 	and.l %d0,%d2
-	cmp.l %a5,%d1
-	jne .L385
-	jra .L384
-.L473:
-	move.b %d6,5299(%a6)
-	move.b %d6,5295(%a6)
-.L368:
+	moveq #8,%d0
+	cmp.l %a3,%d0
+	jne .L397
+	jra .L396
+.L479:
+	move.b %d5,5299(%a6)
+	move.b %d5,5295(%a6)
+.L380:
 	moveq #1,%d0
 	move.b %d0,10(%a6)
 	tst.b 4970(%a6)
-	jeq .L370
-	jra .L453
-.L465:
-	sub.l %a2,%a2
-	mov3q.l #1,%d7
-	lea arr_path,%a3
-	lea arr_read,%a4
-.L398:
-	pea .LC9
-	move.l %d3,%a5
+	jeq .L382
+	jra .L475
+.L470:
+	move.l #96036,%a3
+	clr.l %d7
+	add.l %a6,%a3
+	mov3q.l #1,%d6
+	lea arr_path,%a4
+	lea arr_read,%a2
+	move.l %d4,40(%sp)
+.L410:
+	pea .LC10
+	move.l %d3,%d4
 	addq.l #1,%d3
 	move.l %d3,-(%sp)
-	move.l %d5,-(%sp)
-	jsr (%a3)
-	move.l %a5,-(%sp)
-	move.l %a6,-(%sp)
+	move.l %a3,-(%sp)
 	jsr (%a4)
+	move.l %d4,-(%sp)
+	move.l %a6,-(%sp)
+	jsr (%a2)
 	lea (20,%sp),%sp
 	mov3q.l #1,%d1
 	cmp.l %d0,%d1
-	jeq .L476
+	jeq .L484
 	pea .LC2
 	move.l %d3,-(%sp)
-	move.l %d5,-(%sp)
-	jsr (%a3)
-	move.l %a5,-(%sp)
-	move.l %a6,-(%sp)
+	move.l %a3,-(%sp)
 	jsr (%a4)
+	move.l %d4,-(%sp)
+	move.l %a6,-(%sp)
+	jsr (%a2)
 	lea (20,%sp),%sp
-	move.l %d0,%d6
+	move.l %d0,%d5
 	mov3q.l #1,%d0
-	cmp.l %d6,%d0
-	jeq .L397
-	move.l %a5,-(%sp)
+	cmp.l %d5,%d0
+	jeq .L409
+	move.l %d4,-(%sp)
 	jsr 1074398236
 	addq.l #4,%sp
 	mov3q.l #-1,%d1
-	cmp.l %d6,%d1
+	cmp.l %d5,%d1
 	sne %d0
 	mvs.b %d0,%d0
 	neg.l %d0
-	and.l %d0,%d7
-.L397:
-	moveq #8,%d6
-	cmp.l %d3,%d6
-	jne .L398
-	move.w %a2,%d0
-	move.b %d0,268525900
-	jra .L399
-.L476:
-	move.l %a5,%d6
-	move.l %a2,%d1
-	lsl.l %d6,%d0
-	or.l %d0,%d1
-	move.l %d1,%a2
-	jra .L397
-.L369:
+	and.l %d0,%d6
+.L409:
+	moveq #8,%d5
+	cmp.l %d3,%d5
+	jne .L410
+	move.l 40(%sp),%d4
+	move.b %d7,268525900
+	jra .L411
+.L484:
+	lsl.l %d4,%d0
+	or.l %d0,%d7
+	jra .L409
+.L381:
 	move.b %d0,5295(%a6)
-	st %d6
+	st %d5
 	move.l %a6,-(%sp)
 	jsr sl_load
-	move.b %d6,5299(%a6)
-	move.b %d6,5295(%a6)
+	move.b %d5,5299(%a6)
+	move.b %d5,5295(%a6)
 	addq.l #4,%sp
 	tst.l %d0
-	jeq .L368
+	jeq .L380
 	tst.b 4970(%a6)
-	jeq .L370
-	jra .L453
-.L414:
+	jeq .L382
+	jra .L475
+.L480:
+	move.b 269161681,%d1
+	move.b 8(%a6),%d0
+	mov3q.l #7,%d5
+	mvs.b %d2,%d3
+	and.l %d5,%d1
+	mvz.b %d0,%d5
+	move.b %d1,22(%a6,%d5.l)
+	tst.b %d0
+	jne .L404
+	jra .L485
+.L425:
 	clr.w %d1
 	clr.b %d0
 	clr.b %d2
-	st %d6
+	st %d5
 	mov3q.l #1,%d4
 	move.w %d1,5296(%a6)
 	move.b %d0,5298(%a6)
@@ -2711,25 +2801,14 @@ as_writer:
 	addq.l #8,%sp
 	move.b %d2,268525900
 	and.l %d4,%d0
-	move.b %d6,-2147457388
-	move.b %d6,-2147457387
-	move.b %d6,-2147457386
-	move.b %d6,-2147457385
+	move.b %d5,-2147457388
+	move.b %d5,-2147457387
+	move.b %d5,-2147457386
+	move.b %d5,-2147457385
 	move.b %d1,19(%a6)
 	tst.l %d0
-	jne .L367
-	jra .L473
-.L471:
-	move.b 269161681,%d1
-	move.b 8(%a6),%d0
-	mov3q.l #7,%d6
-	mvs.b %d2,%d3
-	and.l %d6,%d1
-	mvz.b %d0,%d6
-	move.b %d1,22(%a6,%d6.l)
-	tst.b %d0
-	jne .L392
-	jra .L477
+	jne .L379
+	jra .L479
 	.size	as_writer, .-as_writer
 	.align	2
 	.globl	as_project_load
@@ -2763,10 +2842,10 @@ as_project_load:
 	mvz.w #256,%d2
 	move.l %d2,50(%a2)
 	move.b %d0,9(%a2)
-.L479:
+.L487:
 	clr.b (%a0)+
 	cmp.l %d1,%a0
-	jne .L479
+	jne .L487
 	clr.b %d4
 	move.l #-16777216,%d0
 	move.l %d0,5295(%a2)
@@ -2779,24 +2858,24 @@ as_project_load:
 	jsr read_lists
 	addq.l #8,%sp
 	tst.l %d2
-	jle .L485
-.L480:
+	jle .L493
+.L488:
 	move.b %d2,38(%a2)
 	clr.w %d2
 	move.w %d2,40(%a2)
 	tst.b 42(%a2)
-	jeq .L481
+	jeq .L489
 	moveq #1,%d4
 	move.b %d4,-2147483632
-.L481:
+.L489:
 	moveq #1,%d0
 	move.b %d0,12(%a2)
 	movem.l (%sp),#1052
 	lea (16,%sp),%sp
 	rts
-.L485:
+.L493:
 	mov3q.l #-1,%d2
-	jra .L480
+	jra .L488
 	.size	as_project_load, .-as_project_load
 	.align	2
 	.globl	as_project_new
@@ -2834,10 +2913,10 @@ as_project_new:
 	move.b %d1,18(%a2)
 	move.w %d2,11(%a2)
 	tst.b 52(%a2)
-	jeq .L487
+	jeq .L495
 	mvz.w 50(%a2),%d0
 	cmp.l #3599,%d0
-	jhi .L487
+	jhi .L495
 	clr.w %d0
 	move.b %d1,52(%a2)
 	move.w %d0,50(%a2)
@@ -2849,7 +2928,7 @@ as_project_new:
 	move.l (%sp)+,%d2
 	move.l (%sp)+,%a2
 	rts
-.L487:
+.L495:
 	clr.w %d0
 	clr.b %d2
 	move.w %d0,50(%a2)
@@ -2865,24 +2944,26 @@ as_project_new:
 	lea (22,%a2),%a0
 	move.b %d1,53(%a2)
 	move.b %d1,42(%a2)
-.L489:
+.L497:
 	clr.b (%a0)+
 	cmp.l %a0,%d0
-	jne .L489
+	jne .L497
 	move.l %a2,%d1
 	add.l #4970,%d1
 	lea (82,%a2),%a0
-.L490:
+.L498:
 	clr.b (%a0)+
 	cmp.l %d1,%a0
-	jne .L490
-	clr.b %d1
+	jne .L498
+	clr.b %d2
 	clr.w %d0
-	move.l #-16777216,%d2
-	move.l %d2,5295(%a2)
-	move.b %d1,5001(%a2)
+	st %d1
+	move.b %d2,5001(%a2)
 	move.w %d0,4970(%a2)
-	move.b %d1,4974(%a2)
+	move.b %d1,5303(%a2)
+	move.b %d2,4974(%a2)
+	move.l #-16777216,%d0
+	move.l %d0,5295(%a2)
 	move.l (%sp)+,%d2
 	move.l (%sp)+,%a2
 	rts
@@ -2942,8 +3023,8 @@ as_project_stored:
 	move.l %d0,%d3
 	move.l %d3,%d4
 	move.l evlog,%d0
-	add.l #96034,%d4
-	add.l #96294,%d3
+	add.l #96036,%d4
+	add.l #96296,%d3
 	lsl.l #4,%d0
 	or.l %d1,%d0
 	move.l %d0,%d5
@@ -2963,7 +3044,7 @@ as_project_stored:
 	move.b %d5,269455137
 	move.b %d1,269455138
 	move.b %d0,269455139
-.L498:
+.L506:
 	pea .LC2
 	move.l #1073832840,%a2
 	move.l %d2,-(%sp)
@@ -2980,14 +3061,14 @@ as_project_stored:
 	addq.l #1,%d2
 	lea (36,%sp),%sp
 	cmp.l #129,%d2
-	jne .L498
+	jne .L506
 	pea .LC2
-	pea .LC12
+	pea .LC3
 	move.l %d4,-(%sp)
 	lea project_file,%a3
 	jsr (%a3)
 	pea .LC13
-	pea .LC12
+	pea .LC3
 	move.l %d3,-(%sp)
 	jsr (%a3)
 	clr.l -(%sp)
@@ -2996,11 +3077,11 @@ as_project_stored:
 	jsr (%a2)
 	lea (32,%sp),%sp
 	move.l #.LC2,(%sp)
-	pea .LC3
+	pea .LC4
 	move.l %d4,-(%sp)
 	jsr (%a3)
 	pea .LC13
-	pea .LC3
+	pea .LC4
 	move.l %d3,-(%sp)
 	jsr (%a3)
 	clr.l -(%sp)
@@ -3026,8 +3107,8 @@ as_project_reloaded:
 	move.l %a4,%d4
 	move.l evlog,%d0
 	move.l %a4,%d3
-	add.l #96034,%d4
-	add.l #96294,%d3
+	add.l #96036,%d4
+	add.l #96296,%d3
 	lsl.l #4,%d0
 	or.l %d1,%d0
 	move.l %d0,%d5
@@ -3049,7 +3130,7 @@ as_project_reloaded:
 	move.b %d0,269455139
 	clr.w %d0
 	move.w %d0,50(%a4)
-.L503:
+.L511:
 	pea .LC13
 	move.l #1073832840,%a2
 	move.l %d2,-(%sp)
@@ -3066,14 +3147,14 @@ as_project_reloaded:
 	addq.l #1,%d2
 	lea (36,%sp),%sp
 	cmp.l #129,%d2
-	jne .L503
+	jne .L511
 	pea .LC13
-	pea .LC12
+	pea .LC3
 	move.l %d4,-(%sp)
 	lea project_file,%a3
 	jsr (%a3)
 	pea .LC2
-	pea .LC12
+	pea .LC3
 	move.l %d3,-(%sp)
 	jsr (%a3)
 	clr.l -(%sp)
@@ -3082,11 +3163,11 @@ as_project_reloaded:
 	jsr (%a2)
 	lea (32,%sp),%sp
 	move.l #.LC13,(%sp)
-	pea .LC3
+	pea .LC4
 	move.l %d4,-(%sp)
 	jsr (%a3)
 	pea .LC2
-	pea .LC3
+	pea .LC4
 	move.l %d3,-(%sp)
 	jsr (%a3)
 	clr.l -(%sp)
@@ -3095,7 +3176,7 @@ as_project_reloaded:
 	jsr (%a2)
 	lea (36,%sp),%sp
 	tst.l %d0
-	jlt .L504
+	jlt .L512
 	move.w #256,%d1
 	move.w %d1,52(%a4)
 	move.l %a4,-(%sp)
@@ -3106,18 +3187,18 @@ as_project_reloaded:
 	jsr read_lists
 	addq.l #4,%sp
 	move.l 28(%sp),%d0
-.L508:
+.L516:
 	tst.l %d0
-	jle .L515
-.L509:
+	jle .L523
+.L517:
 	move.b %d0,38(%a4)
 	clr.w %d0
 	move.w %d0,40(%a4)
 	tst.b 42(%a4)
-	jeq .L510
+	jeq .L518
 	moveq #1,%d1
 	move.b %d1,-2147483632
-.L510:
+.L518:
 	move.b 57(%a4),%d1
 	clr.l %d0
 	addq.l #1,%d1
@@ -3125,13 +3206,13 @@ as_project_reloaded:
 	movem.l (%sp),#7228
 	lea (32,%sp),%sp
 	rts
-.L515:
+.L523:
 	mov3q.l #-1,%d0
-	jra .L509
-.L504:
+	jra .L517
+.L512:
 	moveq #-12,%d5
 	cmp.l %d0,%d5
-	jeq .L506
+	jeq .L514
 	move.w #256,%d0
 	move.w %d0,52(%a4)
 	move.l %a4,-(%sp)
@@ -3142,8 +3223,8 @@ as_project_reloaded:
 	jsr read_lists
 	addq.l #4,%sp
 	move.l 28(%sp),%d0
-	jra .L508
-.L506:
+	jra .L516
+.L514:
 	move.w #256,%d1
 	move.w %d1,52(%a4)
 	move.l %a4,-(%sp)
@@ -3152,15 +3233,15 @@ as_project_reloaded:
 	move.l %a4,%d1
 	add.l #4970,%d1
 	lea (82,%a4),%a0
-.L507:
+.L515:
 	clr.b (%a0)+
 	cmp.l %a0,%d1
-	jne .L507
+	jne .L515
 	move.w #256,%d5
 	move.w %d5,4970(%a4)
 	tst.l %d0
-	jgt .L509
-	jra .L515
+	jgt .L517
+	jra .L523
 	.size	as_project_reloaded, .-as_project_reloaded
 	.align	2
 	.globl	as_modules_ready
@@ -3172,7 +3253,7 @@ as_modules_ready:
 	jsr ready
 	move.l %d0,%a1
 	tst.b 12(%a1)
-	jeq .L517
+	jeq .L525
 	move.b 269455120,%d0
 	move.b 269455121,%d1
 	move.w %d1,%a0
@@ -3191,8 +3272,8 @@ as_modules_ready:
 	or.l 10(%sp),%d0
 	or.l %d1,%d0
 	cmp.l #1095975473,%d0
-	jeq .L526
-.L517:
+	jeq .L534
+.L525:
 	moveq #1,%d0
 	move.b %d0,12(%a1)
 	move.b 269455120,%d1
@@ -3213,12 +3294,12 @@ as_modules_ready:
 	or.l 10(%sp),%d1
 	or.l %d0,%d1
 	cmp.l #1095975473,%d1
-	jne .L519
+	jne .L527
 	mvz.b 269455124,%d0
 	moveq #15,%d1
 	cmp.l %d0,%d1
-	jcc .L527
-.L519:
+	jcc .L535
+.L527:
 	move.l evlog,%d1
 	moveq #15,%d2
 	clr.b %d0
@@ -3242,17 +3323,17 @@ as_modules_ready:
 	move.b %d2,269455137
 	move.b %d0,269455138
 	move.b %d1,269455139
-.L521:
+.L529:
 	move.l %a1,-(%sp)
 	jsr remember
 	addq.l #4,%sp
-.L518:
+.L526:
 	move.l (%sp)+,%d2
 	clr.l %d0
 	move.l (%sp)+,%a2
 	lea (16,%sp),%sp
 	rts
-.L527:
+.L535:
 	move.b 269455128,%d1
 	move.b 269455129,%d2
 	move.l #268435460,%a0
@@ -3278,15 +3359,15 @@ as_modules_ready:
 	or.l 20(%sp),%d1
 	or.l %d2,%d1
 	move.l %d1,10(%sp)
-.L520:
+.L528:
 	mvz.b (%a0)+,%d1
 	eor.l %d1,%d0
 	move.l #16777619,%d1
 	muls.l %d1,%d0
 	cmp.l #268525900,%a0
-	jne .L520
+	jne .L528
 	cmp.l 10(%sp),%d0
-	jne .L519
+	jne .L527
 	move.l #269455124,%a0
 	mov3q.l #1,%d1
 	move.b (%a0),8(%a1)
@@ -3300,14 +3381,14 @@ as_modules_ready:
 	move.b %d0,18(%a1)
 	mvz.b 269455127,%d0
 	cmp.l %d0,%d1
-	jne .L521
+	jne .L529
 	moveq #1,%d2
 	move.b %d2,4974(%a1)
 	move.l %a1,-(%sp)
 	jsr remember
 	addq.l #4,%sp
-	jra .L518
-.L526:
+	jra .L526
+.L534:
 	move.b 269455132,%d0
 	move.b 269455133,%d1
 	move.w %d1,%a0
@@ -3326,7 +3407,7 @@ as_modules_ready:
 	or.l 10(%sp),%d0
 	or.l %d1,%d0
 	cmp.l 14(%a1),%d0
-	jne .L517
+	jne .L525
 	move.l (%sp)+,%d2
 	clr.l %d0
 	move.l (%sp)+,%a2
@@ -3346,72 +3427,72 @@ as_setlists_open:
 	move.w %d4,5002(%a2)
 	move.b %d0,5001(%a2)
 	tst.b 4971(%a2)
-	jne .L545
+	jne .L553
 	mvz.b 86(%a2),%d0
 	move.b 90(%a2,%d0.l),%d1
 	tst.b 5296(%a2)
-	jeq .L542
+	jeq .L550
 	mvz.b 5302(%a2),%d2
 	cmp.l %d0,%d2
-	jeq .L541
-.L542:
+	jeq .L549
+.L550:
 	mvz.b %d1,%d1
 	move.l %d1,%a1
-.L531:
+.L539:
 	tst.l %a1
-	jeq .L528
+	jeq .L536
 	mulu.w #288,%d0
 	mvz.b 8(%a2),%d2
 	clr.l %d1
 	lea 106(%a2,%d0.l),%a0
-.L534:
+.L542:
 	mvz.b (%a0),%d0
 	cmp.l %d0,%d2
-	jeq .L546
-.L533:
+	jeq .L554
+.L541:
 	addq.l #1,%d1
 	lea (18,%a0),%a0
 	cmp.l %a1,%d1
-	jne .L534
-.L528:
+	jne .L542
+.L536:
 	movem.l (%sp),#1052
 	lea (16,%sp),%sp
 	rts
-.L546:
+.L554:
 	move.b 269161681,%d0
 	mov3q.l #7,%d4
 	mvz.b 1(%a0),%d3
 	and.l %d4,%d0
 	cmp.l %d3,%d0
-	jne .L533
+	jne .L541
 	move.b %d1,%d2
 	mvz.b %d1,%d3
-.L532:
+.L540:
 	move.b %d1,5002(%a2)
 	mov3q.l #6,%d0
 	cmp.l %d3,%d0
-	jcc .L528
+	jcc .L536
 	subq.l #6,%d2
 	move.b %d2,5003(%a2)
 	movem.l (%sp),#1052
 	lea (16,%sp),%sp
 	rts
-.L545:
+.L553:
 	move.l %a2,-(%sp)
 	jsr lists_ready
 	addq.l #4,%sp
 	movem.l (%sp),#1052
 	lea (16,%sp),%sp
 	rts
-.L541:
+.L549:
 	move.b 5301(%a2),%d2
 	mvz.b %d1,%d1
 	move.l %d1,%a1
 	mvz.b %d2,%d3
 	cmp.l %d1,%d3
-	jcc .L531
+	jcc .L539
 	move.b %d2,%d1
-	jra .L532
+	jra .L540
 	.size	as_setlists_open, .-as_setlists_open
 	.section	.rodata.str1.1
 .LC14:
@@ -3445,61 +3526,61 @@ as_key:
 	move.l %d0,%a6
 	moveq #45,%d0
 	cmp.l 84(%sp),%d0
-	jeq .L798
+	jeq .L806
 	moveq #46,%d1
 	cmp.l 84(%sp),%d1
-	jne .L551
-	move.b 5303(%a6),%d0
+	jne .L559
+	move.b 5305(%a6),%d0
 	tst.l 88(%sp)
-	jeq .L552
+	jeq .L560
 	tst.b 44(%a6)
-	jeq .L789
+	jeq .L797
 	move.w #256,%d2
 	move.w %d2,45(%a6)
-.L789:
+.L797:
 	tst.b %d0
-	jne .L554
+	jne .L562
 	tst.b 5001(%a6)
-	jne .L702
-.L550:
+	jne .L710
+.L558:
 	clr.l 28(%sp)
-.L547:
+.L555:
 	movem.l (%sp),#19484
 	move.l 28(%sp),%d0
 	lea (80,%sp),%sp
 	rts
-.L551:
+.L559:
 	moveq #42,%d3
 	cmp.l 84(%sp),%d3
-	jeq .L799
-	tst.b 5303(%a6)
-	jeq .L560
+	jeq .L807
+	tst.b 5305(%a6)
+	jeq .L568
 	moveq #51,%d1
 	cmp.l 84(%sp),%d1
-	jne .L800
+	jne .L808
 	tst.l 88(%sp)
-	jeq .L564
-	move.b 5304(%a6),%d0
-	jeq .L564
+	jeq .L572
+	move.b 5306(%a6),%d0
+	jeq .L572
 	subq.l #1,%d0
-	move.b %d0,5304(%a6)
-.L564:
+	move.b %d0,5306(%a6)
+.L572:
 	mov3q.l #1,28(%sp)
-.L803:
+.L811:
 	movem.l (%sp),#19484
 	move.l 28(%sp),%d0
 	lea (80,%sp),%sp
 	rts
-.L798:
+.L806:
 	tst.l 88(%sp)
 	sne %d0
 	clr.l 28(%sp)
 	neg.l %d0
 	move.b %d0,44(%a6)
-	jra .L547
-.L552:
+	jra .L555
+.L560:
 	tst.b %d0
-	jne .L554
+	jne .L562
 	tst.b 5001(%a6)
 	sne %d1
 	movem.l (%sp),#19484
@@ -3509,67 +3590,67 @@ as_key:
 	move.l 28(%sp),%d0
 	lea (80,%sp),%sp
 	rts
-.L799:
+.L807:
 	tst.l 88(%sp)
 	sne %d0
 	neg.l %d0
 	move.b %d0,4975(%a6)
 	tst.l 88(%sp)
-	jne .L801
+	jne .L809
 	clr.b %d0
 	clr.l 28(%sp)
-	move.b %d0,5303(%a6)
-	jra .L547
-.L554:
+	move.b %d0,5305(%a6)
+	jra .L555
+.L562:
 	tst.b 5001(%a6)
-	jeq .L550
-.L582:
+	jeq .L558
+.L590:
 	tst.l 88(%sp)
-	jeq .L564
+	jeq .L572
 	tst.b 4971(%a6)
-	jeq .L802
+	jeq .L810
 	moveq #50,%d1
 	cmp.l 84(%sp),%d1
-	jne .L564
+	jne .L572
 	clr.b %d1
 	move.b 5002(%a6),%d0
 	move.b %d1,5001(%a6)
 	mvz.b %d0,%d1
 	move.l %d1,%a1
-.L599:
+.L607:
 	mvz.b 5003(%a6),%d4
 	move.l %d4,%a0
 	cmp.l %d4,%d1
-	jcs .L780
+	jcs .L788
 	addq.l #7,%a0
 	cmp.l %a0,%a1
-	jcs .L564
+	jcs .L572
 	subq.l #6,%d0
 	move.b %d0,5003(%a6)
 	mov3q.l #1,28(%sp)
-	jra .L803
-.L560:
+	jra .L811
+.L568:
 	move.b 5001(%a6),%d0
 	moveq #49,%d4
 	cmp.l 84(%sp),%d4
-	jne .L571
+	jne .L579
 	tst.l 88(%sp)
-	jeq .L572
+	jeq .L580
 	tst.b 4975(%a6)
-	jeq .L804
+	jeq .L812
 	tst.b 5296(%a6)
-	jeq .L576
+	jeq .L584
 	tst.b 5297(%a6)
-	jne .L577
+	jne .L585
 	tst.b 5298(%a6)
-	jne .L577
+	jne .L585
 	tst.b %d0
-	jne .L574
-	tst.b 5306(%a6)
-	jne .L805
+	jne .L582
+	tst.b 5308(%a6)
+	jne .L813
 	tst.b 4976(%a6)
-	jne .L564
-.L586:
+	jne .L572
+.L594:
 	move.b 1074531136,%d0
 	move.b 1074531137,%d1
 	moveq #24,%d3
@@ -3586,15 +3667,15 @@ as_key:
 	or.l %d4,%d0
 	or.l %d2,%d0
 	or.l %d1,%d0
-	jeq .L550
+	jeq .L558
 	tst.l 88(%sp)
-	jne .L663
-.L662:
+	jne .L671
+.L670:
 	clr.b %d0
 	mov3q.l #1,28(%sp)
 	move.b %d0,4976(%a6)
-	jra .L803
-.L801:
+	jra .L811
+.L809:
 	move.b 1187503478,%d0
 	move.b 1187503479,%d4
 	moveq #24,%d3
@@ -3613,11 +3694,11 @@ as_key:
 	cmp.l #1074128072,%d0
 	seq %d0
 	neg.l %d0
-	move.b %d0,5306(%a6)
-	jra .L547
-.L804:
+	move.b %d0,5308(%a6)
+	jra .L555
+.L812:
 	tst.b %d0
-	jne .L574
+	jne .L582
 	tst.b 4976(%a6)
 	sne %d1
 	movem.l (%sp),#19484
@@ -3627,20 +3708,20 @@ as_key:
 	move.l 28(%sp),%d0
 	lea (80,%sp),%sp
 	rts
-.L702:
+.L710:
 	tst.b 4971(%a6)
-	jne .L564
-.L786:
+	jne .L572
+.L794:
 	move.b 5002(%a6),%d0
 	mvz.b %d0,%d1
 	move.l %d1,%a1
-	jra .L599
-.L576:
+	jra .L607
+.L584:
 	tst.b %d0
-	jne .L806
-.L588:
+	jne .L814
+.L596:
 	tst.b 4976(%a6)
-	jne .L564
+	jne .L572
 	move.b 1074531136,%d4
 	move.b 1074531137,%d0
 	move.b 1074531138,%d1
@@ -3657,10 +3738,10 @@ as_key:
 	or.l %d3,%d0
 	or.l %d2,%d0
 	or.l %d1,%d0
-	jeq .L550
-.L663:
+	jeq .L558
+.L671:
 	tst.b 9(%a6)
-	jge .L564
+	jge .L572
 	moveq #1,%d1
 	move.b %d1,4976(%a6)
 	move.l %a6,-(%sp)
@@ -3668,7 +3749,7 @@ as_key:
 	move.l %d0,32(%sp)
 	addq.l #4,%sp
 	tst.l %d0
-	jeq .L564
+	jeq .L572
 	mvz.b 86(%a6),%d2
 	lea (4977,%a6),%a0
 	move.b 90(%a6,%d2.l),%d3
@@ -3682,7 +3763,7 @@ as_key:
 	move.b 1074531243,%d0
 	move.l %a0,36(%sp)
 	cmp.l %d1,%d2
-	jcs .L664
+	jcs .L672
 	mov3q.l #7,%d3
 	and.l %d0,%d3
 	moveq #18,%d4
@@ -3711,11 +3792,11 @@ as_key:
 	move.l %d0,%a1
 	sub.l %a0,%a1
 	add.l #268435460,%a1
-.L665:
+.L673:
 	move.b (%a1,%a0.l),%d0
 	move.b %d0,(%a0)+
 	cmp.l %a0,%d1
-	jne .L665
+	jne .L673
 	move.b 35(%sp),%d0
 	move.l 24(%sp),%a0
 	moveq #9,%d2
@@ -3728,7 +3809,7 @@ as_key:
 	mvz.b 8(%a6),%d0
 	addq.l #1,%d0
 	cmp.l %d0,%d2
-	jcc .L807
+	jcc .L815
 	move.l %d0,%d3
 	moveq #10,%d4
 	divu.l %d4,%d3
@@ -3754,17 +3835,17 @@ as_key:
 	move.w %a0,%d2
 	lea .LC20,%a0
 	move.b %d2,(%a2)
-.L672:
+.L680:
 	move.b %d0,(%a1)+
 	addq.l #1,%a0
 	move.b (%a0),%d0
 	cmp.l #.LC20+15,%a0
-	jne .L672
+	jne .L680
 	move.l 24(%sp),%d0
 	moveq #9,%d2
 	addq.l #1,%d0
 	cmp.l %d0,%d2
-	jcs .L673
+	jcs .L681
 	move.l %d1,%a6
 	moveq #10,%d1
 	remu.l %d1,%d2:%d0
@@ -3772,7 +3853,7 @@ as_key:
 	move.l %d2,%d0
 	add.l #48,%d0
 	move.b %d0,(%a6)+
-.L671:
+.L679:
 	clr.b (%a6)
 	pea 48.w
 	move.l 40(%sp),-(%sp)
@@ -3782,26 +3863,26 @@ as_key:
 	move.l 28(%sp),%d0
 	lea (80,%sp),%sp
 	rts
-.L572:
+.L580:
 	tst.b %d0
-	jne .L564
+	jne .L572
 	tst.b 4976(%a6)
-	jne .L662
+	jne .L670
 	tst.b 4975(%a6)
-	jne .L586
+	jne .L594
 	clr.l 28(%sp)
-	jra .L547
-.L571:
+	jra .L555
+.L579:
 	tst.b %d0
-	jne .L584
-.L585:
+	jne .L592
+.L593:
 	moveq #52,%d3
 	cmp.l 84(%sp),%d3
-	jeq .L675
+	jeq .L683
 	moveq #33,%d4
 	cmp.l 84(%sp),%d4
-	jne .L550
-.L675:
+	jne .L558
+.L683:
 	move.b 1074531136,%d0
 	move.b 1074531137,%d1
 	moveq #24,%d3
@@ -3818,73 +3899,73 @@ as_key:
 	or.l %d4,%d0
 	or.l %d2,%d0
 	or.l %d1,%d0
-	jeq .L550
+	jeq .L558
 	tst.l 88(%sp)
-	jeq .L564
+	jeq .L572
 	tst.b 9(%a6)
-	jge .L564
+	jge .L572
 	tst.b 4975(%a6)
-	jeq .L676
+	jeq .L684
 	moveq #33,%d0
 	cmp.l 84(%sp),%d0
-	jeq .L808
+	jeq .L816
 	mov3q.l #-1,24(%sp)
-.L677:
+.L685:
 	jsr stopped
 	move.l %d0,28(%sp)
 	tst.l %d0
-	jne .L678
+	jne .L686
 	pea 48.w
 	pea .LC22
 	jsr 1074111160
 	addq.l #8,%sp
 	mov3q.l #1,28(%sp)
-	jra .L803
-.L565:
+	jra .L811
+.L573:
 	tst.b 5001(%a6)
-	jeq .L585
-.L584:
+	jeq .L593
+.L592:
 	moveq #39,%d4
 	cmp.l 84(%sp),%d4
-	jne .L591
+	jne .L599
 	tst.b 5005(%a6)
-	jne .L592
+	jne .L600
 	tst.l 88(%sp)
-	jeq .L550
+	jeq .L558
 	tst.b 44(%a6)
-	jeq .L550
+	jeq .L558
 	tst.b 4971(%a6)
-	jne .L564
+	jne .L572
 	mvz.b 86(%a6),%d1
 	move.b 90(%a6,%d1.l),%d3
 	move.b %d3,31(%sp)
 	mvz.b %d3,%d4
 	move.l %d4,24(%sp)
-.L698:
+.L706:
 	tst.b 5005(%a6)
-	jne .L786
+	jne .L794
 	moveq #1,%d2
 	move.b 5006(%a6),%d0
 	move.b %d2,5005(%a6)
 	tst.b %d0
-	jeq .L786
+	jeq .L794
 	moveq #16,%d3
 	sub.l 24(%sp),%d3
 	mvz.b %d0,%d0
 	move.l %d3,36(%sp)
 	cmp.l %d3,%d0
-	jcc .L636
+	jcc .L644
 	move.l %d0,36(%sp)
-.L636:
+.L644:
 	tst.l 24(%sp)
-	jeq .L637
+	jeq .L645
 	mvz.b 5002(%a6),%d0
 	move.l 24(%sp),%d2
 	move.l %d0,%d4
 	addq.l #1,%d4
 	move.l %d4,44(%sp)
 	cmp.l %d4,%d2
-	jls .L638
+	jls .L646
 	move.w %d2,%d3
 	mulu.w #18,%d0
 	moveq #18,%d2
@@ -3902,31 +3983,31 @@ as_key:
 	add.l %d0,%a1
 	move.l %a1,24(%sp)
 	move.l %a0,32(%sp)
-.L640:
+.L648:
 	move.l 24(%sp),%d0
 	moveq #-18,%d3
 	add.l %d3,24(%sp)
 	move.l 24(%sp),%a0
 	move.l 40(%sp),%a1
 	add.l %d0,%a1
-.L639:
+.L647:
 	move.b (%a0)+,(%a1)+
 	cmp.l %d0,%a0
-	jne .L639
+	jne .L647
 	move.l 24(%sp),%d4
 	cmp.l 32(%sp),%d4
-	jne .L640
-.L638:
+	jne .L648
+.L646:
 	move.l 44(%sp),%a0
 	move.l %a0,24(%sp)
-.L637:
+.L645:
 	move.b 31(%sp),%d2
 	move.b 39(%sp),%d0
 	add.l 36(%sp),%d2
 	move.b %d0,51(%sp)
 	move.l %d2,44(%sp)
 	tst.l 36(%sp)
-	jeq .L641
+	jeq .L649
 	move.w %d1,%d2
 	move.w 38(%sp),%d3
 	lea (5007,%a6),%a0
@@ -3943,20 +4024,20 @@ as_key:
 	move.l %a0,40(%sp)
 	add.l %d4,%a1
 	move.l %a1,32(%sp)
-.L643:
+.L651:
 	move.l 32(%sp),%a1
 	move.l 28(%sp),%a0
-.L642:
+.L650:
 	move.b (%a0)+,(%a1)+
 	cmp.l %a0,%d0
-	jne .L642
+	jne .L650
 	moveq #18,%d0
 	add.l %d0,28(%sp)
 	add.l %d0,32(%sp)
 	move.l %a0,%d0
 	add.l #18,%d0
 	cmp.l 40(%sp),%d0
-	jne .L643
+	jne .L651
 	lea (47,%sp),%a1
 	move.b 51(%sp),%d2
 	move.l 24(%sp),%a0
@@ -3966,33 +4047,33 @@ as_key:
 	move.l %a0,%d0
 	move.b %d2,4970(%a6)
 	move.b %d0,5002(%a6)
-.L697:
+.L705:
 	mvz.b 5006(%a6),%d0
 	cmp.l 36(%sp),%d0
-	jls .L786
+	jls .L794
 	moveq #76,%d0
 	lea (4982,%a6),%a1
 	lea (4977,%a6),%a0
 	move.l %a1,28(%sp)
 	move.l %a0,24(%sp)
 	lea .LC16,%a1
-.L645:
+.L653:
 	move.b %d0,(%a0)+
 	addq.l #1,%a1
 	move.b (%a1),%d0
 	cmp.l 28(%sp),%a0
-	jne .L645
+	jne .L653
 	addq.l #1,%d1
 	moveq #9,%d0
 	cmp.l %d1,%d0
-	jcc .L647
+	jcc .L655
 	move.l %d1,%d0
 	moveq #10,%d2
 	divu.l %d2,%d0
 	lea (4983,%a6),%a0
 	add.l #48,%d0
 	move.b %d0,4982(%a6)
-.L647:
+.L655:
 	moveq #10,%d4
 	remu.l %d4,%d0:%d1
 	moveq #32,%d1
@@ -4003,13 +4084,13 @@ as_key:
 	move.b %d0,(%a1)+
 	move.b %d1,28(%sp)
 	move.l #.LC17,%d1
-.L648:
+.L656:
 	move.b 28(%sp),(%a1)+
 	addq.l #1,%d1
 	move.l %d1,%a3
 	move.b (%a3),28(%sp)
 	cmp.l 32(%sp),%a1
-	jne .L648
+	jne .L656
 	clr.b %d0
 	move.b %d0,9(%a0)
 	pea 48.w
@@ -4019,23 +4100,23 @@ as_key:
 	addq.l #8,%sp
 	mvz.b %d0,%d1
 	move.l %d1,%a1
-	jra .L599
-.L676:
+	jra .L607
+.L684:
 	jsr stopped
 	move.l %d0,28(%sp)
 	tst.l %d0
-	jeq .L809
+	jeq .L817
 	mvz.b 8(%a6),%d3
 	moveq #33,%d4
 	move.l %d3,%a0
 	cmp.l 84(%sp),%d4
-	jeq .L810
+	jeq .L818
 	mov3q.l #-1,%d0
-.L694:
+.L702:
 	add.l %a0,%d0
 	moveq #15,%d1
 	cmp.l %d0,%d1
-	jcs .L547
+	jcs .L555
 	clr.b %d2
 	move.b %d0,9(%a6)
 	move.b %d2,10(%a6)
@@ -4043,59 +4124,59 @@ as_key:
 	jsr 1073884372
 	addq.l #4,%sp
 	tst.l %d0
-	jge .L547
+	jge .L555
 	st %d3
 	addq.l #7,%d0
 	move.b %d3,9(%a6)
 	tst.l %d0
-	jeq .L811
+	jeq .L819
 	pea 48.w
 	move.l #.LC19,%d0
 	move.l %d0,-(%sp)
 	jsr 1074111160
 	addq.l #8,%sp
-.L819:
+.L827:
 	movem.l (%sp),#19484
 	move.l 28(%sp),%d0
 	lea (80,%sp),%sp
 	rts
-.L800:
+.L808:
 	moveq #32,%d2
 	cmp.l 84(%sp),%d2
-	jne .L562
+	jne .L570
 	tst.l 88(%sp)
-	jeq .L564
-	move.b 5304(%a6),%d1
+	jeq .L572
+	move.b 5306(%a6),%d1
 	mvz.b 5300(%a6),%d3
 	mvz.b %d1,%d0
 	addq.l #1,%d0
 	cmp.l %d0,%d3
-	jls .L564
+	jls .L572
 	addq.l #1,%d1
-	move.b %d1,5304(%a6)
+	move.b %d1,5306(%a6)
 	mov3q.l #1,28(%sp)
-	jra .L803
-.L562:
+	jra .L811
+.L570:
 	moveq #49,%d4
 	cmp.l 84(%sp),%d4
-	jne .L565
+	jne .L573
 	tst.l 88(%sp)
-	jeq .L566
+	jeq .L574
 	tst.b 4976(%a6)
-	jne .L564
-	move.b 5304(%a6),%d0
-	move.b 5307(%a6),%d1
+	jne .L572
+	move.b 5306(%a6),%d0
+	move.b 5309(%a6),%d1
 	move.b %d0,24(%sp)
 	move.b %d1,31(%sp)
-	move.b %d0,5305(%a6)
+	move.b %d0,5307(%a6)
 	tst.b 5296(%a6)
-	jeq .L564
+	jeq .L572
 	tst.b 5298(%a6)
-	jne .L564
+	jne .L572
 	mvz.b %d0,%d0
 	mvz.b 5300(%a6),%d1
 	cmp.l %d0,%d1
-	jls .L564
+	jls .L572
 	move.b 31(%sp),%d1
 	mov3q.l #6,%d2
 	eor.l %d2,%d1
@@ -4105,71 +4186,71 @@ as_key:
 	mvz.b %d1,%d3
 	move.w %d1,%a1
 	lea (%a6,%d3.l),%a2
-	mvz.b 5308(%a2),%d1
+	mvz.b 5310(%a2),%d1
 	move.l %d3,%a0
 	move.l %a2,32(%sp)
 	cmp.l %d0,%d1
-	jeq .L564
+	jeq .L572
 	mulu.w #5652,%d0
 	addq.l #6,%a0
 	move.l %a0,36(%sp)
 	move.l %d0,%a0
 	move.w %a1,%d0
-	lea (5600,%a0),%a0
+	lea (5602,%a0),%a0
 	add.l %a6,%a0
 	move.l %a0,%d1
 	add.l #5652,%d1
 	tst.b %d0
-	jeq .L567
+	jeq .L575
 	mvz.w #5652,%d0
 	sub.l %a0,%d0
 	move.l %d0,%a1
 	add.l #268469371,%a1
-.L569:
+.L577:
 	move.b (%a0)+,%d0
 	move.b %d0,(%a1,%a0.l)
 	cmp.l %a0,%d1
-	jne .L569
+	jne .L577
 	move.b 24(%sp),%d1
 	move.l 32(%sp),%a0
 	mvz.b 31(%sp),%d0
 	subq.l #6,%d0
-	move.b %d1,5308(%a0)
+	move.b %d1,5310(%a0)
 	move.b 268525900,%d1
 	tst.l %d0
-	jne .L704
+	jne .L712
 	moveq #127,%d0
 	and.l %d0,%d1
 	move.b %d1,268525900
 	move.l 36(%sp),-(%sp)
 	jsr set_chain
 	addq.l #4,%sp
-.L820:
+.L828:
 	mov3q.l #1,28(%sp)
-	jra .L803
-.L566:
+	jra .L811
+.L574:
 	clr.b %d3
 	mov3q.l #1,28(%sp)
 	move.b %d3,4976(%a6)
-	jra .L803
-.L611:
+	jra .L811
+.L619:
 	move.b 5002(%a6),%d1
-	jne .L785
+	jne .L793
 	tst.b 5003(%a6)
-	jeq .L564
+	jeq .L572
 	clr.b %d0
-.L780:
+.L788:
 	move.b %d0,5003(%a6)
 	mov3q.l #1,28(%sp)
-	jra .L803
-.L806:
+	jra .L811
+.L814:
 	tst.b 4971(%a6)
-	jne .L564
-.L781:
+	jne .L572
+.L789:
 	mvz.b 86(%a6),%d0
 	mvz.b 90(%a6,%d0.l),%d1
 	tst.b 44(%a6)
-	jeq .L654
+	jeq .L662
 	clr.b %d2
 	lsl.l #4,%d0
 	move.b %d2,5001(%a6)
@@ -4184,15 +4265,15 @@ as_key:
 	move.b 5002(%a6),%d0
 	mvz.b %d0,%d1
 	move.l %d1,%a1
-	jra .L599
-.L592:
+	jra .L607
+.L600:
 	tst.l 88(%sp)
-	jne .L595
+	jne .L603
 	clr.b %d0
 	mov3q.l #1,28(%sp)
 	move.b %d0,5005(%a6)
-	jra .L803
-.L678:
+	jra .L811
+.L686:
 	move.b 1074531240,%d0
 	move.b 1074531241,%d0
 	move.b 1074531242,%d0
@@ -4205,7 +4286,7 @@ as_key:
 	move.l %d1,32(%sp)
 	move.l %d2,40(%sp)
 	cmp.l %d2,%d3
-	jcs .L547
+	jcs .L555
 	move.w 34(%sp),%d0
 	mvz.w #5652,%d4
 	clr.l 36(%sp)
@@ -4216,18 +4297,18 @@ as_key:
 	move.l %d0,24(%sp)
 	move.l 24(%sp),%a0
 	lea (-5652,%a0),%a0
-.L680:
+.L688:
 	move.b (%a0),%d0
 	lea (%a0,%d1.l),%a1
 	move.b (%a1),(%a0)+
 	move.b %d0,(%a1)
 	cmp.l 24(%sp),%a0
-	jne .L680
+	jne .L688
 	add.l #45216,%a0
 	move.l %a0,24(%sp)
 	moveq #8,%d2
 	cmp.l 36(%sp),%d2
-	jne .L708
+	jne .L716
 	lea (107,%a6),%a1
 	mov3q.l #1,%a0
 	move.l %a1,36(%sp)
@@ -4260,49 +4341,49 @@ as_key:
 	move.b %d2,56(%sp)
 	mvz.b %d2,%d3
 	move.l %d3,24(%sp)
-.L682:
+.L690:
 	move.l 44(%sp),%a0
 	addq.l #1,44(%sp)
 	move.b (%a0)+,%d0
-	jeq .L688
+	jeq .L696
 	mvz.b %d0,%d0
 	move.l 36(%sp),%a0
 	move.l %a0,%a1
 	mulu.w #18,%d0
 	add.l %d0,%a1
-.L685:
+.L693:
 	mvz.b -1(%a0),%d0
 	cmp.l 24(%sp),%d0
-	jne .L683
+	jne .L691
 	mvz.b (%a0),%d0
 	cmp.l 32(%sp),%d0
-	jeq .L812
+	jeq .L820
 	cmp.l 40(%sp),%d0
-	jeq .L813
-.L683:
+	jeq .L821
+.L691:
 	lea (18,%a0),%a0
 	cmp.l %a0,%a1
-	jne .L685
-.L688:
+	jne .L693
+.L696:
 	mvz.w #288,%d1
 	move.l 52(%sp),%d2
 	add.l %d1,36(%sp)
 	cmp.l 44(%sp),%d2
-	jne .L682
+	jne .L690
 	move.b 269161681,%d0
 	mov3q.l #7,%d1
 	and.l %d1,%d0
 	cmp.l 32(%sp),%d0
-	jeq .L709
+	jeq .L717
 	cmp.l 40(%sp),%d0
-	jeq .L814
-.L690:
+	jeq .L822
+.L698:
 	mvz.b 56(%sp),%d0
 	mvz.b 22(%a6,%d0.l),%d2
 	cmp.l 32(%sp),%d2
-	jeq .L815
+	jeq .L823
 	cmp.l 40(%sp),%d2
-	jeq .L816
+	jeq .L824
 	clr.b %d0
 	lea (43,%sp),%a0
 	moveq #24,%d4
@@ -4337,20 +4418,20 @@ as_key:
 	move.b %d2,1074531238
 	move.b %d0,1074531239
 	jsr 1073966616
-.L817:
+.L825:
 	movem.l (%sp),#19484
 	move.l 28(%sp),%d0
 	lea (80,%sp),%sp
 	rts
-.L813:
+.L821:
 	moveq #1,%d0
 	move.b 35(%sp),(%a0)
 	lea (18,%a0),%a0
 	move.b %d0,4970(%a6)
 	cmp.l %a0,%a1
-	jne .L685
-	jra .L688
-.L816:
+	jne .L693
+	jra .L696
+.L824:
 	lea (35,%sp),%a1
 	moveq #24,%d4
 	move.b (%a1),22(%a6,%d0.l)
@@ -4387,31 +4468,31 @@ as_key:
 	move.b %d2,1074531238
 	move.b %d0,1074531239
 	jsr 1073966616
-	jra .L817
-.L814:
+	jra .L825
+.L822:
 	move.l 32(%sp),%d0
 	move.l %d0,-(%sp)
 	jsr 1074398112
 	move.b 8(%a6),60(%sp)
 	addq.l #4,%sp
-	jra .L690
-.L812:
+	jra .L698
+.L820:
 	moveq #1,%d4
 	move.b 48(%sp),(%a0)
 	lea (18,%a0),%a0
 	move.b %d4,4970(%a6)
 	cmp.l %a0,%a1
-	jne .L685
-	jra .L688
-.L577:
+	jne .L693
+	jra .L696
+.L585:
 	tst.b %d0
-	jeq .L588
-.L574:
+	jeq .L596
+.L582:
 	tst.b 4971(%a6)
-	jeq .L781
+	jeq .L789
 	mov3q.l #1,28(%sp)
-	jra .L803
-.L802:
+	jra .L811
+.L810:
 	move.b 86(%a6),%d1
 	moveq #49,%d4
 	mvz.b %d1,%d0
@@ -4420,13 +4501,13 @@ as_key:
 	move.b %d2,28(%sp)
 	move.l %d3,%a0
 	cmp.l 84(%sp),%d4
-	jlt .L605
+	jlt .L613
 	moveq #39,%d2
 	cmp.l 84(%sp),%d2
-	jlt .L606
+	jlt .L614
 	moveq #32,%d3
 	cmp.l 84(%sp),%d3
-	jne .L818
+	jne .L826
 	move.b 5002(%a6),%d0
 	mvz.b %d0,%d1
 	move.l %d1,%d2
@@ -4434,72 +4515,72 @@ as_key:
 	move.l %d1,%a1
 	move.l %d2,24(%sp)
 	cmp.l %d2,%a0
-	jls .L599
+	jls .L607
 	move.l %d0,%d1
 	addq.l #1,%d1
 	move.b %d1,%d0
 	move.l %d2,%a1
 	move.b %d1,5002(%a6)
 	mvz.b %d1,%d1
-	jra .L599
-.L808:
+	jra .L607
+.L816:
 	mov3q.l #1,24(%sp)
-	jra .L677
-.L809:
+	jra .L685
+.L817:
 	pea 48.w
 	pea .LC23
 	jsr 1074111160
 	addq.l #8,%sp
 	mov3q.l #1,28(%sp)
-	jra .L803
-.L595:
+	jra .L811
+.L603:
 	tst.b 4971(%a6)
-	jne .L564
+	jne .L572
 	mvz.b 86(%a6),%d1
 	move.b 90(%a6,%d1.l),%d0
 	mvz.b %d0,%d2
 	move.b %d0,31(%sp)
 	move.l %d2,24(%sp)
-	jra .L698
-.L708:
+	jra .L706
+.L716:
 	move.l 24(%sp),%a0
 	moveq #8,%d0
 	move.l %d0,36(%sp)
 	lea (-5652,%a0),%a0
-	jra .L680
-.L605:
+	jra .L688
+.L613:
 	moveq #51,%d2
 	cmp.l 84(%sp),%d2
-	jeq .L611
+	jeq .L619
 	moveq #52,%d3
 	cmp.l 84(%sp),%d3
-	jeq .L612
+	jeq .L620
 	moveq #50,%d4
 	cmp.l 84(%sp),%d4
-	jne .L786
+	jne .L794
 	clr.b %d1
 	move.b 5002(%a6),%d0
 	move.b %d1,5001(%a6)
 	mvz.b %d0,%d1
 	move.l %d1,%a1
-	jra .L599
-.L810:
+	jra .L607
+.L818:
 	move.l 28(%sp),%d0
-	jra .L694
-.L606:
+	jra .L702
+.L614:
 	moveq #41,%d1
 	cmp.l 84(%sp),%d1
-	jne .L786
+	jne .L794
 	tst.b 44(%a6)
-	jeq .L786
+	jeq .L794
 	tst.l %d3
-	jeq .L786
+	jeq .L794
 	move.w %d0,%d1
 	lea (4977,%a6),%a1
 	move.l %a1,32(%sp)
 	mulu.w #288,%d1
 	tst.b 4975(%a6)
-	jeq .L625
+	jeq .L633
 	move.w %d3,%d2
 	lea 124(%a6,%d1.l),%a2
 	lea (5007,%a6),%a1
@@ -4509,53 +4590,53 @@ as_key:
 	move.l %d2,%a0
 	add.l %a1,%a0
 	move.l %a0,36(%sp)
-.L627:
+.L635:
 	move.l 24(%sp),%a1
 	move.l %d1,%a0
 	lea (-18,%a0),%a0
-.L626:
+.L634:
 	move.b (%a0)+,(%a1)+
 	cmp.l %a0,%d1
-	jne .L626
+	jne .L634
 	moveq #18,%d1
 	move.l 36(%sp),%d2
 	add.l %d1,24(%sp)
 	move.l %a0,%d1
 	add.l #18,%d1
 	cmp.l 24(%sp),%d2
-	jne .L627
+	jne .L635
 	move.b 28(%sp),%d3
 	lea .LC14,%a0
 	moveq #67,%d1
 	move.l 32(%sp),%a1
 	move.b %d3,5006(%a6)
-.L628:
+.L636:
 	move.b %d1,(%a1)+
 	addq.l #1,%a0
 	move.b (%a0),%d1
 	cmp.l #.LC14+12,%a0
-	jne .L628
+	jne .L636
 	addq.l #1,%d0
 	moveq #9,%d4
 	cmp.l %d0,%d4
-	jcs .L629
+	jcs .L637
 	moveq #10,%d4
 	remu.l %d4,%d1:%d0
 	lea (4989,%a6),%a0
 	add.l #48,%d1
 	move.b %d1,(%a0)+
-.L631:
+.L639:
 	clr.b (%a0)
 	pea 48.w
 	move.l 36(%sp),-(%sp)
-.L822:
+.L830:
 	jsr 1074111160
 	move.b 5002(%a6),%d0
 	addq.l #8,%sp
 	mvz.b %d0,%d1
 	move.l %d1,%a1
-	jra .L599
-.L815:
+	jra .L607
+.L823:
 	lea (43,%sp),%a0
 	moveq #24,%d4
 	move.b (%a0),22(%a6,%d0.l)
@@ -4592,23 +4673,23 @@ as_key:
 	move.b %d2,1074531238
 	move.b %d0,1074531239
 	jsr 1073966616
-	jra .L817
-.L709:
+	jra .L825
+.L717:
 	move.l 40(%sp),%d0
 	move.l %d0,-(%sp)
 	jsr 1074398112
 	move.b 8(%a6),60(%sp)
 	addq.l #4,%sp
-	jra .L690
-.L612:
+	jra .L698
+.L620:
 	tst.b 4975(%a6)
-	jne .L616
+	jne .L624
 	mov3q.l #-1,%a0
-.L615:
+.L623:
 	add.l %a0,%d0
 	moveq #15,%d2
 	cmp.l %d0,%d2
-	jcs .L786
+	jcs .L794
 	moveq #1,%d3
 	clr.w %d4
 	move.l %a0,%d0
@@ -4617,26 +4698,26 @@ as_key:
 	mov3q.l #1,28(%sp)
 	move.b %d3,4970(%a6)
 	move.w %d4,5002(%a6)
-	jra .L803
-.L811:
+	jra .L811
+.L819:
 	pea 48.w
 	move.l #.LC18,%d0
 	move.l %d0,-(%sp)
 	jsr 1074111160
 	addq.l #8,%sp
-	jra .L819
-.L591:
+	jra .L827
+.L599:
 	moveq #40,%d1
 	cmp.l 84(%sp),%d1
-	jne .L582
+	jne .L590
 	tst.b 5004(%a6)
-	jne .L596
+	jne .L604
 	tst.l 88(%sp)
-	jeq .L550
+	jeq .L558
 	tst.b 44(%a6)
-	jeq .L550
+	jeq .L558
 	tst.b 4971(%a6)
-	jne .L564
+	jne .L572
 	mvz.b 86(%a6),%d0
 	moveq #1,%d2
 	move.l %d0,24(%sp)
@@ -4649,11 +4730,11 @@ as_key:
 	mvz.b %d1,%d1
 	move.l %d3,%a0
 	cmp.l %d3,%d1
-	jls .L699
+	jls .L707
 	move.l %a0,%d0
 	addq.l #1,%d0
 	cmp.l %d0,%d1
-	jls .L649
+	jls .L657
 	move.w 26(%sp),%d3
 	move.w %a0,%d2
 	mulu.w #18,%d1
@@ -4665,19 +4746,19 @@ as_key:
 	add.l %d2,%d0
 	add.l %d3,%d0
 	add.l %a1,%d1
-.L651:
+.L659:
 	move.l %d0,%a0
 	move.l %d0,%a1
 	lea (-18,%a0),%a0
 	lea (-36,%a1),%a1
-.L650:
+.L658:
 	move.b (%a0)+,(%a1)+
 	cmp.l %a0,%d0
-	jne .L650
+	jne .L658
 	add.l #18,%d0
 	cmp.l %d1,%d0
-	jne .L651
-.L649:
+	jne .L659
+.L657:
 	move.b 31(%sp),%d0
 	move.l 24(%sp),%d4
 	subq.l #1,%d0
@@ -4685,37 +4766,37 @@ as_key:
 	moveq #1,%d0
 	move.b %d0,4970(%a6)
 	move.b 5002(%a6),%d0
-.L699:
+.L707:
 	tst.b %d0
-	jeq .L652
+	jeq .L660
 	move.l 24(%sp),%d1
 	mvz.b 90(%a6,%d1.l),%d1
 	move.l %d1,%a0
 	mvz.b %d0,%d1
 	cmp.l %d1,%a0
-	jhi .L787
+	jhi .L795
 	move.l %d0,%d1
-.L785:
+.L793:
 	subq.l #1,%d1
 	move.b %d1,%d0
 	move.b %d1,5002(%a6)
 	mvz.b %d1,%d1
 	move.l %d1,%a1
-	jra .L599
-.L818:
+	jra .L607
+.L826:
 	moveq #33,%d4
 	cmp.l 84(%sp),%d4
-	jne .L786
+	jne .L794
 	tst.b 4975(%a6)
-	jne .L614
+	jne .L622
 	mov3q.l #1,%a0
-	jra .L615
-.L654:
+	jra .L623
+.L662:
 	tst.l %d1
-	jeq .L786
+	jeq .L794
 	jsr stopped
 	tst.l %d0
-	jne .L656
+	jne .L664
 	pea 48.w
 	pea .LC21
 	jsr 1074111160
@@ -4723,25 +4804,25 @@ as_key:
 	addq.l #8,%sp
 	mvz.b %d0,%d1
 	move.l %d1,%a1
-	jra .L599
-.L664:
+	jra .L607
+.L672:
 	moveq #76,%d1
 	move.l 36(%sp),%d0
 	lea (4982,%a6),%a0
 	lea .LC16,%a1
-.L668:
+.L676:
 	move.l %d0,%a2
 	addq.l #1,%a1
 	move.b %d1,(%a2)+
 	move.b (%a1),%d1
 	move.l %a2,%d0
 	cmp.l %a2,%a0
-	jne .L668
+	jne .L676
 	move.l 24(%sp),%d0
 	moveq #9,%d1
 	addq.l #1,%d0
 	cmp.l %d0,%d1
-	jcc .L669
+	jcc .L677
 	move.l %d0,%d2
 	moveq #10,%d3
 	divu.l %d3,%d2
@@ -4750,7 +4831,7 @@ as_key:
 	lea (48,%a1),%a1
 	move.w %a1,%d4
 	move.b %d4,4982(%a6)
-.L669:
+.L677:
 	moveq #10,%d2
 	remu.l %d2,%d1:%d0
 	lea (9,%a0),%a6
@@ -4758,19 +4839,19 @@ as_key:
 	lea .LC17,%a1
 	add.l #48,%d1
 	move.b %d1,(%a0)+
-.L670:
+.L678:
 	move.b %d0,(%a0)+
 	addq.l #1,%a1
 	move.b (%a1),%d0
 	cmp.l %a0,%a6
-	jeq .L671
+	jeq .L679
 	move.b %d0,(%a0)+
 	addq.l #1,%a1
 	move.b (%a1),%d0
 	cmp.l %a0,%a6
-	jne .L670
-	jra .L671
-.L807:
+	jne .L678
+	jra .L679
+.L815:
 	moveq #10,%d3
 	remu.l %d3,%d4:%d0
 	moveq #32,%d2
@@ -4789,8 +4870,8 @@ as_key:
 	move.w %a0,%d2
 	lea .LC20,%a0
 	move.b %d2,(%a2)
-	jra .L672
-.L673:
+	jra .L680
+.L681:
 	move.l %d0,%d3
 	moveq #10,%d4
 	divu.l %d4,%d3
@@ -4806,62 +4887,62 @@ as_key:
 	add.l #48,%d0
 	move.b %d3,18(%a1)
 	move.b %d0,(%a6)+
-	jra .L671
-.L704:
+	jra .L679
+.L712:
 	moveq #-65,%d0
 	and.l %d0,%d1
 	move.b %d1,268525900
 	move.l 36(%sp),-(%sp)
 	jsr set_chain
 	addq.l #4,%sp
-	jra .L820
-.L567:
+	jra .L828
+.L575:
 	clr.l %d0
 	sub.l %a0,%d0
 	move.l %d0,%a1
 	add.l #268469371,%a1
-	jra .L569
-.L805:
-	move.b 5307(%a6),%d0
+	jra .L577
+.L813:
+	move.b 5309(%a6),%d0
 	mov3q.l #6,%d2
 	moveq #1,%d1
-	move.b 5301(%a6),5304(%a6)
+	move.b 5301(%a6),5306(%a6)
 	move.l %a6,%a0
 	eor.l %d2,%d0
-	move.b %d1,5303(%a6)
+	move.b %d1,5305(%a6)
 	move.b %d1,4976(%a6)
 	mvz.b 5300(%a6),%d1
 	tst.b %d0
 	seq %d0
 	mvs.b %d0,%d0
 	sub.l %d0,%a0
-	move.b 5308(%a0),%d0
+	move.b 5310(%a0),%d0
 	mvz.b %d0,%d3
 	cmp.l %d3,%d1
-	jhi .L581
+	jhi .L589
 	st %d0
-.L581:
-	move.b %d0,5305(%a6)
+.L589:
+	move.b %d0,5307(%a6)
 	mov3q.l #1,28(%sp)
-	jra .L803
-.L596:
+	jra .L811
+.L604:
 	tst.l 88(%sp)
-	jne .L702
+	jne .L710
 	clr.b %d0
 	mov3q.l #1,28(%sp)
 	move.b %d0,5004(%a6)
-	jra .L803
-.L616:
+	jra .L811
+.L624:
 	mvz.b 5002(%a6),%d1
 	move.l %d1,%a3
 	subq.l #1,%a3
 	move.l %a3,32(%sp)
 	tst.l %d1
-	jeq .L705
+	jeq .L713
 	move.l %d1,%a1
-.L617:
+.L625:
 	cmp.l 32(%sp),%a0
-	jle .L618
+	jle .L626
 	mulu.w #288,%d0
 	move.w %a1,%d1
 	lea (80,%sp),%a2
@@ -4875,10 +4956,10 @@ as_key:
 	add.l #62,%d1
 	move.l %d1,%a0
 	move.l %a1,24(%sp)
-.L619:
+.L627:
 	move.b (%a1)+,(%a0)+
 	cmp.l 28(%sp),%a0
-	jne .L619
+	jne .L627
 	move.l 32(%sp),%a1
 	move.w %a1,%d2
 	mulu.w #18,%d2
@@ -4887,64 +4968,64 @@ as_key:
 	lea (18,%a0),%a2
 	move.l %a2,32(%sp)
 	move.l %a0,%d0
-.L620:
+.L628:
 	move.l 24(%sp),%a3
 	move.l %d0,%a2
 	addq.l #1,24(%sp)
 	move.b (%a2)+,(%a3)+
 	move.l %a2,%d0
 	cmp.l 32(%sp),%a2
-	jne .L620
-.L621:
+	jne .L628
+.L629:
 	move.l %d1,%a3
 	move.b (%a3)+,(%a0)+
 	move.l %a3,%d1
 	cmp.l 28(%sp),%a3
-	jne .L621
+	jne .L629
 	moveq #1,%d0
 	move.b %d0,4970(%a6)
-.L618:
+.L626:
 	move.w %a1,%d0
 	move.b %d0,5002(%a6)
 	mvz.b %d0,%d1
-	jra .L599
-.L652:
+	jra .L607
+.L660:
 	tst.b 5003(%a6)
-	jeq .L564
+	jeq .L572
 	clr.b %d1
 	mov3q.l #1,28(%sp)
 	move.b %d1,5003(%a6)
-	jra .L803
-.L705:
+	jra .L811
+.L713:
 	sub.l %a1,%a1
 	move.w %a1,%d0
 	move.b %d0,5002(%a6)
 	mvz.b %d0,%d1
-	jra .L599
-.L657:
+	jra .L607
+.L665:
 	move.b %d0,5295(%a6)
 	clr.l -(%sp)
 	jsr 1073884372
 	addq.l #4,%sp
 	tst.l %d0
-	jlt .L821
+	jlt .L829
 	clr.b %d3
 	move.b 5002(%a6),%d0
 	move.b %d3,5001(%a6)
 	mvz.b %d0,%d1
-.L787:
+.L795:
 	move.l %d1,%a1
-	jra .L599
-.L614:
+	jra .L607
+.L622:
 	mvz.b 5002(%a6),%d3
 	move.l %d3,%a1
 	lea (1,%a1),%a2
 	move.l %a2,32(%sp)
-	jra .L617
-.L656:
+	jra .L625
+.L664:
 	move.b 5002(%a6),%d0
 	tst.b 5296(%a6)
-	jeq .L657
+	jeq .L665
 	moveq #1,%d3
 	move.b %d0,5299(%a6)
 	clr.b %d4
@@ -4956,8 +5037,8 @@ as_key:
 	addq.l #4,%sp
 	mvz.b %d0,%d1
 	move.l %d1,%a1
-	jra .L599
-.L625:
+	jra .L607
+.L633:
 	mvz.b 5002(%a6),%d0
 	move.l %d1,%a2
 	lea (5007,%a6),%a1
@@ -4966,27 +5047,27 @@ as_key:
 	add.l %a6,%a0
 	move.l %a0,%d0
 	add.l #18,%d0
-.L632:
+.L640:
 	move.b (%a0)+,(%a1)+
 	cmp.l %d0,%a0
-	jne .L632
+	jne .L640
 	moveq #1,%d0
 	move.l 32(%sp),%a1
 	lea .LC15,%a0
 	move.b %d0,5006(%a6)
 	moveq #67,%d0
-.L633:
+.L641:
 	move.b %d0,(%a1)+
 	addq.l #1,%a0
 	move.b (%a0),%d0
 	cmp.l #.LC15+11,%a0
-	jne .L633
+	jne .L641
 	lea (4988,%a6),%a0
 	clr.b (%a0)
 	pea 48.w
 	move.l 36(%sp),-(%sp)
-	jra .L822
-.L629:
+	jra .L830
+.L637:
 	move.l %d0,%d1
 	moveq #10,%d2
 	divu.l %d2,%d1
@@ -4997,32 +5078,32 @@ as_key:
 	remu.l %d4,%d1:%d0
 	add.l #48,%d1
 	move.b %d1,(%a0)+
-	jra .L631
-.L641:
+	jra .L639
+.L649:
 	lea (47,%sp),%a0
 	move.b (%a0),90(%a6,%d1.l)
-	jra .L697
-.L821:
+	jra .L705
+.L829:
 	st %d1
 	addq.l #7,%d0
 	move.b %d1,5295(%a6)
 	tst.l %d0
-	jeq .L823
+	jeq .L831
 	move.l #.LC19,%d0
 	pea 48.w
 	move.l %d0,-(%sp)
-.L824:
+.L832:
 	jsr 1074111160
 	move.b 5002(%a6),%d0
 	addq.l #8,%sp
 	mvz.b %d0,%d1
 	move.l %d1,%a1
-	jra .L599
-.L823:
+	jra .L607
+.L831:
 	move.l #.LC18,%d0
 	pea 48.w
 	move.l %d0,-(%sp)
-	jra .L824
+	jra .L832
 	.size	as_key, .-as_key
 	.section	.rodata.str1.1
 .LC24:
@@ -5038,30 +5119,30 @@ as_tick:
 	jsr ready
 	move.l %d0,%a2
 	tst.l %a3
-	jeq .L826
+	jeq .L834
 	move.l evlog,%d0
 	mvz.b 8(%a2),%d1
 	lsl.l #4,%d0
 	or.l %d1,%d0
 	move.l %d0,(%a3)
-.L826:
+.L834:
 	tst.b 19(%a2)
-	jeq .L827
+	jeq .L835
 	tst.b 9(%a2)
-	jlt .L920
-.L827:
+	jlt .L938
+.L835:
 	move.w 50(%a2),%d0
 	mvz.w %d0,%d1
 	cmp.l #3999,%d1
-	jhi .L831
+	jhi .L839
 	addq.l #1,%d0
 	move.w %d0,50(%a2)
-.L831:
+.L839:
 	move.b 38(%a2),%d2
-	jmi .L832
+	jmi .L840
 	tst.b 9(%a2)
-	jlt .L921
-.L833:
+	jlt .L939
+.L841:
 	move.b 1175263980,%d0
 	move.b 1175263981,%d1
 	move.b 1175263982,%d2
@@ -5088,12 +5169,12 @@ as_tick:
 	neg.l %d1
 	mvz.b %d1,%d2
 	cmp.l %a3,%d2
-	jeq .L839
+	jeq .L847
 	move.b %d1,47(%a2)
 	clr.b %d1
 	move.b %d1,48(%a2)
 	tst.l %d0
-	jeq .L875
+	jeq .L887
 	move.l evlog,%d0
 	moveq #12,%d1
 	lsl.l #4,%d0
@@ -5111,7 +5192,7 @@ as_tick:
 	move.b %d2,269455137
 	move.b %d1,269455138
 	move.b %d0,269455139
-.L839:
+.L847:
 	move.b 1175263980,%d0
 	move.b 1175263981,%d2
 	move.b 1175263982,%d1
@@ -5131,100 +5212,105 @@ as_tick:
 	move.l %a3,%d3
 	or.l %d3,%d0
 	or.l %d1,%d0
-	jeq .L841
+	jeq .L849
 	moveq #1,%d0
 	move.b %d0,43(%a2)
 	tst.b %d2
-	jeq .L843
+	jeq .L851
 	move.b 46(%a2),%d0
 	moveq #60,%d2
 	addq.l #1,%d0
 	mvz.b %d0,%d1
 	move.b %d0,46(%a2)
 	cmp.l %d1,%d2
-	jcs .L922
-.L843:
+	jcs .L940
+.L851:
 	tst.b 42(%a2)
-	jeq .L844
+	jeq .L852
 	tst.b 9(%a2)
-	jlt .L923
-.L845:
+	jlt .L941
+.L853:
 	clr.b %d0
 	move.b %d0,48(%a2)
-.L844:
+.L852:
 	tst.b 5297(%a2)
-	jeq .L848
-.L937:
+	jeq .L856
+.L956:
 	tst.b 9(%a2)
-	jlt .L871
-.L849:
+	jlt .L883
+.L857:
+	move.b 5303(%a2),%d2
+	jmi .L875
+	tst.b 52(%a2)
+	jeq .L942
+.L875:
 	move.l %a2,-(%sp)
 	jsr title_follow
 	addq.l #4,%sp
 	tst.b 10(%a2)
-	jeq .L867
-	clr.b %d2
-	move.b %d2,10(%a2)
+	jeq .L879
+	clr.b %d0
+	move.b %d0,10(%a2)
 	pea 48.w
 	pea .LC24
 	jsr 1074111160
 	addq.l #8,%sp
-.L867:
+.L879:
 	tst.b 8(%a2)
-	jeq .L825
+	jeq .L833
 	tst.b 9(%a2)
-	jlt .L924
-.L825:
+	jlt .L943
+.L833:
 	movem.l (%sp),#3084
 	lea (32,%sp),%sp
 	rts
-.L923:
+.L941:
 	tst.b 38(%a2)
-	jge .L845
+	jge .L853
 	tst.b 19(%a2)
-	jne .L845
+	jne .L853
 	tst.b 54(%a2)
-	jne .L845
+	jne .L853
 	move.b 48(%a2),%d0
 	moveq #119,%d2
 	addq.l #1,%d0
 	mvz.b %d0,%d1
 	move.b %d0,48(%a2)
 	cmp.l %d1,%d2
-	jcc .L847
+	jcc .L855
 	clr.b %d3
 	move.b %d3,42(%a2)
 	move.b %d3,48(%a2)
 	tst.b 43(%a2)
-	jne .L925
-.L847:
+	jne .L944
+.L855:
 	tst.b 5297(%a2)
-	jne .L871
-.L848:
+	jne .L883
+.L856:
 	tst.b 5296(%a2)
-	jeq .L852
-.L870:
+	jeq .L860
+.L882:
 	tst.b 5298(%a2)
-	jne .L852
-	mvz.b 5307(%a2),%d0
+	jne .L860
+	mvz.b 5309(%a2),%d0
 	subq.l #6,%d0
 	tst.l %d0
-	jeq .L926
+	jeq .L945
 	move.b 269161681,%d0
 	mov3q.l #7,%d3
 	clr.l %d2
 	lea (%a2,%d2.l),%a0
 	mov3q.l #6,%a3
-	move.b 5308(%a0),%d1
+	move.b 5310(%a0),%d1
 	and.l %d3,%d0
 	cmp.l %d0,%a3
-	jeq .L854
-.L916:
+	jeq .L862
+.L934:
 	mvz.b %d1,%d0
-.L855:
+.L863:
 	cmp.l #255,%d0
-	jeq .L861
-.L864:
+	jeq .L869
+.L872:
 	move.b -2147457388,%d0
 	move.b -2147457387,%d2
 	move.b -2147457386,%d1
@@ -5242,8 +5328,8 @@ as_tick:
 	or.l %d2,%d0
 	or.l %d1,%d0
 	cmp.l %a3,%d0
-	jne .L927
-.L866:
+	jne .L946
+.L874:
 	move.b 1074531136,%d0
 	move.b 1074531137,%d2
 	move.b 1074531138,%d1
@@ -5260,34 +5346,34 @@ as_tick:
 	move.l %a0,%d2
 	or.l %d2,%d0
 	or.l %d1,%d0
-	jne .L928
-.L852:
+	jne .L947
+.L860:
 	tst.b 4974(%a2)
-	jeq .L849
-.L932:
+	jeq .L857
+.L951:
 	tst.b 9(%a2)
-	jge .L849
+	jge .L857
 	tst.b 4973(%a2)
-	jne .L849
+	jne .L857
 	jsr stopped
 	tst.l %d0
-	jeq .L849
+	jeq .L857
 	clr.l -(%sp)
 	jsr 1073884372
 	addq.l #4,%sp
 	tst.l %d0
-	jlt .L849
+	jlt .L857
 	moveq #1,%d1
 	move.b %d1,4973(%a2)
-	jra .L849
-.L841:
+	jra .L857
+.L849:
 	tst.b %d2
-	jeq .L843
+	jeq .L851
 	clr.b %d1
 	move.b %d1,43(%a2)
 	move.b %d1,45(%a2)
-	jra .L843
-.L875:
+	jra .L851
+.L887:
 	move.l evlog,%d0
 	moveq #13,%d1
 	lsl.l #4,%d0
@@ -5305,18 +5391,55 @@ as_tick:
 	move.b %d2,269455137
 	move.b %d1,269455138
 	move.b %d0,269455139
-	jra .L839
-.L922:
+	jra .L847
+.L942:
+	mvz.w 50(%a2),%d0
+	cmp.l #240,%d0
+	jls .L875
+	tst.b 38(%a2)
+	jge .L875
+	tst.b 9(%a2)
+	jge .L875
+	tst.b 19(%a2)
+	jne .L875
+	tst.b 42(%a2)
+	jne .L875
+	tst.b 5296(%a2)
+	jne .L875
+	tst.b 4971(%a2)
+	jne .L875
+	jsr stopped
+	tst.l %d0
+	jeq .L875
+	mvs.b %d2,%d0
+	move.b 90(%a2,%d0.l),%d0
+	jeq .L876
+	move.b 5304(%a2),%d3
+	mvz.b %d0,%d0
+	mvz.b %d3,%d1
+	cmp.l %d0,%d1
+	jcc .L876
+	move.b %d2,86(%a2)
+	move.b %d3,5295(%a2)
+	clr.l -(%sp)
+	jsr 1073884372
+	addq.l #4,%sp
+	tst.l %d0
+	jlt .L878
+	st %d2
+	move.b %d2,5303(%a2)
+	jra .L875
+.L940:
 	clr.b %d3
 	move.b %d3,45(%a2)
-	jra .L843
-.L921:
+	jra .L851
+.L939:
 	tst.b 53(%a2)
-	jne .L929
-.L834:
+	jne .L948
+.L842:
 	move.b 54(%a2),%d0
-	jeq .L833
-.L872:
+	jeq .L841
+.L884:
 	move.b 1175264880,%d1
 	move.b 1175264881,%d2
 	move.w %d2,%a0
@@ -5335,37 +5458,37 @@ as_tick:
 	move.l %a1,%d3
 	or.l %d3,%d1
 	or.l %d2,%d1
-	jeq .L837
+	jeq .L845
 	jsr 1074097132
 	clr.b %d0
 	move.b %d0,54(%a2)
-	jra .L833
-.L924:
-	move.l #96032,%d1
+	jra .L841
+.L943:
+	move.l #96034,%d1
 	moveq #119,%d3
 	move.w (%a2,%d1.l),%d0
 	addq.l #1,%d0
 	mvz.w %d0,%d2
 	cmp.l %d2,%d3
-	jcs .L869
+	jcs .L881
 	move.w %d0,(%a2,%d1.l)
 	movem.l (%sp),#3084
 	lea (32,%sp),%sp
 	rts
-.L920:
+.L938:
 	mvz.b 8(%a2),%d0
 	mvz.b 22(%a2,%d0.l),%d0
 	move.l %d0,-(%sp)
 	jsr 1074398112
 	addq.l #4,%sp
 	tst.l %d0
-	jlt .L930
+	jlt .L949
 	clr.b %d1
 	move.b %d1,21(%a2)
 	move.b %d1,19(%a2)
 	tst.b 20(%a2)
-	jne .L931
-.L829:
+	jne .L950
+.L837:
 	clr.b %d3
 	move.b %d3,20(%a2)
 	move.b 1074531136,%d0
@@ -5384,7 +5507,7 @@ as_tick:
 	move.l %a0,%d2
 	or.l %d2,%d0
 	or.l %d1,%d0
-	jeq .L827
+	jeq .L835
 	move.b 1074531232,%d0
 	move.b 1074531233,%d2
 	move.b 1074531234,%d1
@@ -5401,7 +5524,7 @@ as_tick:
 	move.l %a0,%d2
 	or.l %d2,%d0
 	or.l %d1,%d0
-	jne .L830
+	jne .L838
 	mvz.b 8(%a2),%d0
 	clr.b %d3
 	move.b 22(%a2,%d0.l),%d0
@@ -5409,24 +5532,24 @@ as_tick:
 	move.b %d3,1074531237
 	move.b %d3,1074531238
 	move.b %d0,1074531239
-.L830:
+.L838:
 	jsr 1073966616
-	jra .L827
-.L871:
+	jra .L835
+.L883:
 	mov3q.l #6,-(%sp)
 	jsr 1074398112
 	addq.l #4,%sp
 	tst.l %d0
-	jlt .L850
+	jlt .L858
 	clr.b %d3
-	mvz.b 5309(%a2),%d0
+	mvz.b 5311(%a2),%d0
 	move.b %d3,5297(%a2)
 	cmp.l #255,%d0
-	jeq .L851
+	jeq .L859
 	mov3q.l #7,-(%sp)
 	jsr set_chain
 	addq.l #4,%sp
-.L851:
+.L859:
 	move.b 1175263980,%d0
 	move.b 1175263981,%d2
 	move.b 1175263982,%d1
@@ -5443,24 +5566,24 @@ as_tick:
 	move.l %a0,%d2
 	or.l %d2,%d0
 	or.l %d1,%d0
-	jne .L850
+	jne .L858
 	jsr 1074077708
-.L850:
+.L858:
 	tst.b 5296(%a2)
-	jeq .L852
+	jeq .L860
 	tst.b 5297(%a2)
-	jeq .L870
+	jeq .L882
 	tst.b 4974(%a2)
-	jeq .L849
-	jra .L932
-.L929:
+	jeq .L857
+	jra .L951
+.L948:
 	mvz.w 50(%a2),%d0
 	moveq #29,%d1
 	cmp.l %d0,%d1
-	jcc .L834
+	jcc .L842
 	jsr stopped
 	tst.l %d0
-	jeq .L834
+	jeq .L842
 	move.b %d2,9(%a2)
 	moveq #1,%d2
 	move.b %d2,20(%a2)
@@ -5471,7 +5594,7 @@ as_tick:
 	move.b %d0,55(%a2)
 	lsl.l #4,%d1
 	tst.l %d0
-	jlt .L933
+	jlt .L952
 	mov3q.l #7,%d0
 	or.l %d1,%d0
 	moveq #24,%d3
@@ -5493,34 +5616,34 @@ as_tick:
 	clr.b %d1
 	move.b %d0,38(%a2)
 	move.b %d1,53(%a2)
-.L832:
+.L840:
 	move.b 54(%a2),%d0
-	jeq .L833
+	jeq .L841
 	tst.b 9(%a2)
-	jge .L833
-	jra .L872
-.L930:
+	jge .L841
+	jra .L884
+.L949:
 	move.b 21(%a2),%d0
 	addq.l #1,%d0
 	mvz.b %d0,%d1
 	move.b %d0,21(%a2)
 	moveq #119,%d0
 	cmp.l %d1,%d0
-	jcc .L827
+	jcc .L835
 	clr.b %d1
 	move.b %d1,21(%a2)
 	move.b %d1,19(%a2)
 	tst.b 20(%a2)
-	jeq .L829
-	jra .L931
-.L869:
+	jeq .L837
+	jra .L950
+.L881:
 	clr.w %d0
 	move.w %d0,(%a2,%d1.l)
 	move.l %a2,36(%sp)
 	movem.l (%sp),#3084
 	lea (32,%sp),%sp
 	jra remember
-.L931:
+.L950:
 	move.b 1175263980,%d0
 	move.b 1175263981,%d2
 	move.b 1175263982,%d1
@@ -5537,26 +5660,26 @@ as_tick:
 	move.l %a0,%d2
 	or.l %d2,%d0
 	or.l %d1,%d0
-	jeq .L829
+	jeq .L837
 	mov3q.l #1,-(%sp)
 	jsr 1074094040
 	addq.l #4,%sp
-	jra .L829
-.L837:
+	jra .L837
+.L845:
 	addq.l #1,%d0
 	mvz.b %d0,%d1
 	moveq #90,%d2
 	cmp.l %d1,%d2
-	jcc .L934
+	jcc .L953
 	clr.b %d3
 	move.b %d3,54(%a2)
-	jra .L833
-.L854:
+	jra .L841
+.L862:
 	mvz.b 5300(%a2),%d0
 	move.l %d0,%a1
 	mvz.b %d1,%d0
 	cmp.l %a1,%d0
-	jcc .L855
+	jcc .L863
 	mov3q.l #1,%d3
 	eor.l %d2,%d3
 	move.l %d3,24(%sp)
@@ -5573,17 +5696,17 @@ as_tick:
 	move.b %d1,5301(%a2)
 	move.w %a3,%d1
 	mvz.b 31(%sp),%d0
-	move.b %d1,5307(%a2)
+	move.b %d1,5309(%a2)
 	move.l 16(%sp),%a1
 	cmp.l %a1,%d0
-	jcs .L935
+	jcs .L954
 	st %d3
 	move.l 24(%sp),%a0
 	add.l %a2,%a0
-	move.b %d3,5308(%a0)
-	tst.b 5303(%a2)
-	jne .L936
-.L861:
+	move.b %d3,5310(%a0)
+	tst.b 5305(%a2)
+	jne .L955
+.L869:
 	move.b -2147457388,%d0
 	move.b -2147457387,%d2
 	move.b -2147457386,%d1
@@ -5602,7 +5725,7 @@ as_tick:
 	or.l %d1,%d0
 	addq.l #1,%d0
 	tst.l %d0
-	jeq .L866
+	jeq .L874
 	st %d0
 	move.b %d0,-2147457388
 	move.b %d0,-2147457387
@@ -5628,26 +5751,26 @@ as_tick:
 	move.l %a0,%d2
 	or.l %d2,%d0
 	or.l %d1,%d0
-	jeq .L852
-.L928:
+	jeq .L860
+.L947:
 	jsr stopped
 	tst.l %d0
-	jeq .L852
+	jeq .L860
 	tst.b 9(%a2)
-	jge .L849
+	jge .L857
 	moveq #1,%d3
 	move.b %d3,5298(%a2)
 	clr.l -(%sp)
 	jsr 1073884372
 	addq.l #4,%sp
 	tst.l %d0
-	jge .L852
+	jge .L860
 	clr.b %d0
 	move.b %d0,5298(%a2)
 	tst.b 4974(%a2)
-	jeq .L849
-	jra .L932
-.L927:
+	jeq .L857
+	jra .L951
+.L946:
 	move.l %a3,-(%sp)
 	jsr set_chain
 	move.b 1074531136,%d0
@@ -5667,12 +5790,12 @@ as_tick:
 	move.l %a0,%d2
 	or.l %d2,%d0
 	or.l %d1,%d0
-	jeq .L852
-	jra .L928
-.L934:
+	jeq .L860
+	jra .L947
+.L953:
 	move.b %d0,54(%a2)
-	jra .L833
-.L925:
+	jra .L841
+.L944:
 	move.b 1175263980,%d0
 	move.b 1175263981,%d2
 	move.b 1175263982,%d1
@@ -5689,26 +5812,26 @@ as_tick:
 	move.l %a0,%d2
 	or.l %d2,%d0
 	or.l %d1,%d0
-	jne .L847
+	jne .L855
 	jsr 1074077708
 	tst.b 5297(%a2)
-	jeq .L848
-	jra .L937
-.L936:
-	move.b %d3,5305(%a2)
-	jra .L861
-.L926:
+	jeq .L856
+	jra .L956
+.L955:
+	move.b %d3,5307(%a2)
+	jra .L869
+.L945:
 	move.b 269161681,%d0
 	mov3q.l #7,%d3
 	mov3q.l #1,%d2
 	lea (%a2,%d2.l),%a0
 	mov3q.l #7,%a3
-	move.b 5308(%a0),%d1
+	move.b 5310(%a0),%d1
 	and.l %d3,%d0
 	cmp.l %d0,%a3
-	jne .L916
-	jra .L854
-.L933:
+	jne .L934
+	jra .L862
+.L952:
 	moveq #8,%d2
 	addq.l #7,%d0
 	or.l %d2,%d1
@@ -5734,58 +5857,58 @@ as_tick:
 	move.b %d1,9(%a2)
 	move.b %d2,20(%a2)
 	tst.l %d0
-	jeq .L873
+	jeq .L885
 	move.w 40(%a2),%d0
 	addq.l #1,%d0
 	mvz.w %d0,%d1
 	move.w %d0,40(%a2)
 	cmp.l #18000,%d1
-	jls .L834
-.L873:
+	jls .L842
+.L885:
 	st %d3
 	move.b 54(%a2),%d0
 	move.b %d3,38(%a2)
 	tst.b %d0
-	jne .L872
-	jra .L833
-.L935:
+	jne .L884
+	jra .L841
+.L954:
 	mulu.w #5652,%d0
 	mov3q.l #7,%d1
 	sub.l %d2,%d1
 	mulu.w #5652,%d1
 	move.l %d0,%a0
-	lea (5600,%a0),%a0
+	lea (5602,%a0),%a0
 	add.l %a2,%a0
 	move.l %d1,%a1
 	sub.l %a0,%a1
 	add.l #268435459,%a1
 	lea (5652,%a0),%a3
-.L858:
+.L866:
 	move.b (%a0)+,%d0
 	move.b %d0,(%a1,%a0.l)
 	cmp.l %a0,%a3
-	jne .L858
+	jne .L866
 	move.l 24(%sp),%a0
 	add.l %a2,%a0
-	move.b 31(%sp),5308(%a0)
+	move.b 31(%sp),5310(%a0)
 	move.l #268525900,%a1
 	subq.l #1,%d2
 	move.b (%a1),%d0
 	tst.l %d2
-	jeq .L859
+	jeq .L867
 	moveq #127,%d1
 	mov3q.l #7,%a3
 	and.l %d1,%d0
 	move.b %d0,(%a1)
-.L860:
-	move.b 5308(%a0),%d1
-	tst.b 5303(%a2)
-	jeq .L916
+.L868:
+	move.b 5310(%a0),%d1
+	tst.b 5305(%a2)
+	jeq .L934
 	mvz.b 5300(%a2),%d2
 	mvz.b %d1,%d0
 	cmp.l %d2,%d0
-	jcc .L863
-	move.b %d1,5305(%a2)
+	jcc .L871
+	move.b %d1,5307(%a2)
 	move.b -2147457388,%d0
 	move.b -2147457387,%d2
 	move.b -2147457386,%d1
@@ -5803,20 +5926,28 @@ as_tick:
 	or.l %d2,%d0
 	or.l %d1,%d0
 	cmp.l %a3,%d0
-	jeq .L866
-	jra .L927
-.L859:
+	jeq .L874
+	jra .L946
+.L867:
 	moveq #-65,%d2
 	mov3q.l #6,%a3
 	and.l %d2,%d0
 	move.b %d0,(%a1)
-	jra .L860
-.L863:
+	jra .L868
+.L876:
+	st %d0
+	move.b %d0,5303(%a2)
+	jra .L875
+.L878:
+	st %d3
+	move.b %d3,5295(%a2)
+	jra .L875
+.L871:
 	st %d1
-	move.b %d1,5305(%a2)
+	move.b %d1,5307(%a2)
 	cmp.l #255,%d0
-	jne .L864
-	jra .L861
+	jne .L872
+	jra .L869
 	.size	as_tick, .-as_tick
 	.section	.rodata.str1.1
 .LC25:
@@ -5834,14 +5965,14 @@ as_draw:
 	movem.l #15612,(%sp)
 	jsr ready
 	move.l %d0,%a2
-	tst.b 5303(%a2)
-	jne .L1066
+	tst.b 5305(%a2)
+	jne .L1085
 	tst.b 5296(%a2)
-	jeq .L960
+	jeq .L979
 	tst.b 5297(%a2)
-	jne .L960
+	jne .L979
 	tst.b 5001(%a2)
-	jne .L961
+	jne .L980
 	move.b 1074531136,%d1
 	move.b 1074531137,%d3
 	moveq #24,%d5
@@ -5856,8 +5987,8 @@ as_draw:
 	or.l %d3,%d1
 	or.l %d4,%d1
 	or.l %d0,%d1
-	jeq .L1067
-.L962:
+	jeq .L1086
+.L981:
 	move.b 1074531136,%d0
 	move.b 1074531137,%d2
 	moveq #24,%d4
@@ -5872,12 +6003,12 @@ as_draw:
 	or.l %d2,%d0
 	or.l %d3,%d0
 	or.l %d1,%d0
-	jne .L1068
-.L938:
+	jne .L1087
+.L957:
 	movem.l -96(%fp),#15612
 	unlk %fp
 	rts
-.L987:
+.L1006:
 	move.l %d0,%d1
 	moveq #10,%d4
 	divu.l %d4,%d1
@@ -5899,7 +6030,7 @@ as_draw:
 	move.b %d7,1(%a1)
 	move.l 8(%fp),%a1
 	move.l %a1,-44(%fp)
-.L989:
+.L1008:
 	mov3q.l #7,%d1
 	and.l %d3,%d1
 	move.l %d3,%d7
@@ -5913,17 +6044,17 @@ as_draw:
 	move.l %d5,%d0
 	lsl.l %d1,%d0
 	not.l %d0
-.L990:
+.L1009:
 	move.b (%a1),%d1
 	addq.l #8,%a1
 	and.l %d0,%d1
 	move.b %d1,-8(%a1)
 	cmp.l %d7,%a1
-	jne .L990
+	jne .L1009
 	addq.l #1,%d3
 	moveq #57,%d0
 	cmp.l %d3,%d0
-	jne .L989
+	jne .L1008
 	move.l -44(%fp),%a1
 	moveq #124,%d3
 	moveq #50,%d0
@@ -5938,7 +6069,7 @@ as_draw:
 	or.l %d3,%d1
 	move.b %d1,97(%a4)
 	move.l %d2,%a4
-.L992:
+.L1011:
 	mov3q.l #7,%d3
 	and.l %d0,%d3
 	move.l %a1,%d1
@@ -5954,7 +6085,7 @@ as_draw:
 	move.b %d3,%d6
 	move.b %d1,%d5
 	cmp.l %d0,%d2
-	jne .L992
+	jne .L1011
 	move.l %a0,%d0
 	sub.l %a4,%d0
 	move.b %d3,121(%a5)
@@ -5970,10 +6101,10 @@ as_draw:
 	move.l %a5,-(%sp)
 	jsr (%a3)
 	lea (16,%sp),%sp
-.L960:
+.L979:
 	tst.b 5001(%a2)
-	jeq .L962
-.L961:
+	jeq .L981
+.L980:
 	move.l 8(%fp),%a1
 	mov3q.l #2,%d4
 	move.l 8(%fp),%a0
@@ -5982,7 +6113,7 @@ as_draw:
 	add.l #832,%d3
 	lea (184,%a1),%a1
 	move.l %a0,-44(%fp)
-.L993:
+.L1012:
 	mov3q.l #7,%d6
 	and.l %d4,%d6
 	move.l %d5,%d2
@@ -5995,22 +6126,22 @@ as_draw:
 	add.l %d3,%d1
 	lsl.l %d6,%d2
 	not.l %d2
-.L994:
+.L1013:
 	move.b (%a0),%d0
 	addq.l #8,%a0
 	and.l %d2,%d0
 	move.b %d0,-8(%a0)
 	cmp.l %a0,%d1
-	jne .L994
+	jne .L1013
 	addq.l #1,%d4
 	moveq #63,%d0
 	cmp.l %d4,%d0
-	jne .L993
+	jne .L1012
 	mov3q.l #2,%d0
 	clr.l %d2
 	mov3q.l #2,%d4
 	mov3q.l #1,%d5
-.L995:
+.L1014:
 	move.w #191,%a4
 	move.l %d5,%d1
 	addq.l #1,%d0
@@ -6040,12 +6171,12 @@ as_draw:
 	move.b %d1,(%a0)
 	moveq #62,%d1
 	cmp.l %d0,%d1
-	jne .L995
+	jne .L1014
 	move.l -44(%fp),%a0
 	move.b 184(%a0),%d1
 	move.l %a0,8(%fp)
 	lea (824,%a0),%a0
-.L996:
+.L1015:
 	move.b 7(%a3),%d2
 	move.b 8(%a3),%d0
 	moveq #32,%d3
@@ -6060,11 +6191,11 @@ as_draw:
 	move.b %d0,(%a3)
 	move.b %d0,%d1
 	cmp.l %a3,%a0
-	jne .L996
+	jne .L1015
 	move.l -44(%fp),%a0
 	move.l %a0,8(%fp)
 	tst.b 4971(%a2)
-	jne .L1069
+	jne .L1088
 	mvz.b 86(%a2),%d3
 	move.l %fp,%d2
 	add.l #-24,%d2
@@ -6089,7 +6220,7 @@ as_draw:
 	divu.l %d5,%d1
 	add.l #48,%d0
 	cmp.l %d4,%d7
-	jcc .L999
+	jcc .L1018
 	move.l %d2,-(%sp)
 	move.l #791754240,%a0
 	mov3q.l #4,-(%sp)
@@ -6108,7 +6239,7 @@ as_draw:
 	move.l 8(%fp),-(%sp)
 	jsr (%a4)
 	lea (36,%sp),%sp
-.L1000:
+.L1019:
 	move.w %d3,%d0
 	mvz.w #288,%d1
 	move.l 8(%fp),%a0
@@ -6121,11 +6252,11 @@ as_draw:
 	mulu.w #288,%d0
 	move.l %d3,-56(%fp)
 	lea 108(%a2,%d0.l),%a5
-.L1002:
+.L1021:
 	mvz.b 5003(%a2),%d0
 	add.l %d5,%d0
 	cmp.l -48(%fp),%d0
-	jcc .L938
+	jcc .L957
 	moveq #18,%d7
 	moveq #9,%d2
 	muls.l %d0,%d7
@@ -6134,7 +6265,7 @@ as_draw:
 	mvz.b 106(%a2,%d1.l),%d1
 	addq.l #1,%d1
 	cmp.l %d1,%d2
-	jcc .L1022
+	jcc .L1041
 	move.l %d1,%d3
 	moveq #10,%d4
 	divu.l %d4,%d3
@@ -6143,7 +6274,7 @@ as_draw:
 	lea (48,%a0),%a0
 	move.w %a0,%d3
 	move.b %d3,-24(%fp)
-.L1003:
+.L1022:
 	moveq #10,%d4
 	remu.l %d4,%d2:%d1
 	moveq #46,%d3
@@ -6156,7 +6287,7 @@ as_draw:
 	mvz.b 107(%a2,%d7.l),%d1
 	addq.l #1,%d1
 	cmp.l %d1,%d4
-	jcs .L1004
+	jcs .L1023
 	moveq #10,%d4
 	remu.l %d4,%d7:%d1
 	moveq #32,%d1
@@ -6169,14 +6300,14 @@ as_draw:
 	move.l %a0,%d1
 	add.l #15,%d1
 	lea (%a5,%d0.l),%a0
-.L1006:
+.L1025:
 	move.b (%a0),%d0
 	addq.l #1,%a0
 	tst.b %d0
-	jeq .L1070
+	jeq .L1089
 	move.b %d0,(%a1)+
 	cmp.l %a1,%d1
-	jne .L1006
+	jne .L1025
 	move.l %d1,%a0
 	clr.b (%a0)
 	move.l -52(%fp),-(%sp)
@@ -6189,18 +6320,18 @@ as_draw:
 	mvz.b 5002(%a2),%d0
 	add.l %d5,%d1
 	cmp.l %d1,%d0
-	jeq .L1071
-.L1009:
+	jeq .L1090
+.L1028:
 	addq.l #1,%d5
 	addq.l #7,%d6
 	mov3q.l #7,%d0
 	cmp.l %d5,%d0
-	jne .L1002
-.L1063:
+	jne .L1021
+.L1082:
 	movem.l -96(%fp),#15612
 	unlk %fp
 	rts
-.L1068:
+.L1087:
 	mvz.b 8(%a2),%d0
 	lea label,%a3
 	move.l %d0,%a0
@@ -6220,7 +6351,7 @@ as_draw:
 	movem.l -96(%fp),#15612
 	unlk %fp
 	rts
-.L1066:
+.L1085:
 	move.l 8(%fp),%a1
 	mov3q.l #2,%d4
 	move.l 8(%fp),%a3
@@ -6229,7 +6360,7 @@ as_draw:
 	add.l #832,%d3
 	lea (184,%a1),%a1
 	move.l %a3,-44(%fp)
-.L939:
+.L958:
 	mov3q.l #7,%d6
 	and.l %d4,%d6
 	move.l %d5,%d2
@@ -6242,24 +6373,24 @@ as_draw:
 	add.l %d3,%d1
 	lsl.l %d6,%d2
 	not.l %d2
-.L941:
+.L960:
 	move.b (%a0),%d0
 	addq.l #8,%a0
 	and.l %d2,%d0
 	move.b %d0,-8(%a0)
 	cmp.l %a0,%d1
-	jne .L941
+	jne .L960
 	addq.l #1,%d4
 	moveq #63,%d0
 	cmp.l %d4,%d0
-	jne .L939
+	jne .L958
 	move.l -44(%fp),%a0
 	mov3q.l #2,%d0
 	clr.l %d2
 	mov3q.l #2,%d4
 	move.l %a0,8(%fp)
 	mov3q.l #1,%d5
-.L942:
+.L961:
 	move.w #191,%a4
 	move.l %d5,%d1
 	addq.l #1,%d0
@@ -6289,12 +6420,12 @@ as_draw:
 	move.b %d1,(%a0)
 	moveq #62,%d1
 	cmp.l %d0,%d1
-	jne .L942
+	jne .L961
 	move.l -44(%fp),%a0
 	move.b 184(%a0),%d1
 	move.l %a0,8(%fp)
 	lea (824,%a0),%a0
-.L943:
+.L962:
 	move.b 7(%a3),%d2
 	move.b 8(%a3),%d0
 	moveq #32,%d3
@@ -6309,12 +6440,12 @@ as_draw:
 	move.b %d0,(%a3)
 	move.b %d0,%d1
 	cmp.l %a3,%a0
-	jne .L943
+	jne .L962
 	mvz.b 5302(%a2),%d0
-	mvz.b 5305(%a2),%d1
+	mvz.b 5307(%a2),%d1
 	mvz.b 5301(%a2),%d6
 	mvz.b 5300(%a2),%d4
-	mvz.b 5304(%a2),%d5
+	mvz.b 5306(%a2),%d5
 	move.l -44(%fp),%a0
 	move.l %fp,%d2
 	move.l %d0,-(%sp)
@@ -6337,7 +6468,7 @@ as_draw:
 	moveq #9,%d1
 	addq.l #1,%d0
 	cmp.l %d0,%d1
-	jcc .L1013
+	jcc .L1032
 	move.l %d0,%d1
 	moveq #10,%d7
 	divu.l %d7,%d1
@@ -6352,10 +6483,10 @@ as_draw:
 	add.l #48,%d1
 	move.b %d1,(%a0)
 	cmp.l %d4,%d0
-	jcs .L945
-.L1075:
+	jcs .L964
+.L1094:
 	lea (2,%a0),%a1
-.L946:
+.L965:
 	moveq #10,%d7
 	move.l %d4,%d0
 	remu.l %d7,%d1:%d0
@@ -6385,40 +6516,40 @@ as_draw:
 	lea (36,%sp),%sp
 	mov3q.l #6,%d0
 	cmp.l %d5,%d0
-	jls .L947
+	jls .L966
 	mov3q.l #6,%d3
-.L947:
+.L966:
 	move.w %d3,%d0
 	move.l 8(%fp),%a0
 	subq.l #6,%d3
 	move.w #12,%a5
-	lea (5204,%a2),%a2
+	lea (5206,%a2),%a2
 	move.l %a0,-48(%fp)
 	move.l %d2,-56(%fp)
 	mulu.w #18,%d0
 	add.l %d0,%a2
-.L948:
+.L967:
 	cmp.l %d4,%d3
-	jcc .L938
+	jcc .L957
 	cmp.l -44(%fp),%d3
-	jeq .L1014
+	jeq .L1033
 	cmp.l %d6,%d3
-	jeq .L1072
+	jeq .L1091
 	moveq #32,%d0
-.L949:
+.L968:
 	move.b %d0,-24(%fp)
 	moveq #9,%d1
 	mvz.b (%a2),%d0
 	addq.l #1,%d0
 	cmp.l %d0,%d1
-	jcc .L1016
+	jcc .L1035
 	move.l %d0,%d1
 	moveq #10,%d7
 	divu.l %d7,%d1
 	lea (-22,%fp),%a0
 	add.l #48,%d1
 	move.b %d1,-23(%fp)
-.L950:
+.L969:
 	moveq #10,%d2
 	remu.l %d2,%d1:%d0
 	moveq #46,%d7
@@ -6430,7 +6561,7 @@ as_draw:
 	moveq #9,%d0
 	addq.l #1,%a1
 	cmp.l %a1,%d0
-	jcs .L951
+	jcs .L970
 	move.l %a1,%d1
 	moveq #10,%d0
 	remu.l %d0,%d2:%d1
@@ -6451,14 +6582,14 @@ as_draw:
 	move.b %d0,(%a0)
 	move.l %d2,%a0
 	move.l -56(%fp),%d2
-.L953:
+.L972:
 	move.b (%a0),%d0
 	addq.l #1,%a0
 	tst.b %d0
-	jeq .L1073
+	jeq .L1092
 	move.b %d0,(%a1)+
 	cmp.l %a1,%d1
-	jne .L953
+	jne .L972
 	move.l %d1,%a1
 	clr.b (%a1)
 	move.l %d2,-56(%fp)
@@ -6469,19 +6600,19 @@ as_draw:
 	jsr (%a3)
 	lea (16,%sp),%sp
 	cmp.l %d5,%d3
-	jeq .L1074
-.L956:
+	jeq .L1093
+.L975:
 	addq.l #1,%d3
 	addq.l #7,%a5
 	lea (18,%a2),%a2
 	moveq #61,%d0
 	cmp.l %a5,%d0
-	jne .L948
-.L1064:
+	jne .L967
+.L1083:
 	movem.l -96(%fp),#15612
 	unlk %fp
 	rts
-.L1013:
+.L1032:
 	moveq #10,%d3
 	remu.l %d3,%d1:%d0
 	moveq #47,%d7
@@ -6491,16 +6622,16 @@ as_draw:
 	move.b %d1,(%a0)
 	move.b %d7,1(%a0)
 	cmp.l %d4,%d0
-	jcc .L1075
-.L945:
+	jcc .L1094
+.L964:
 	move.l %d4,%d0
 	moveq #10,%d3
 	divu.l %d3,%d0
 	lea (3,%a0),%a1
 	add.l #48,%d0
 	move.b %d0,2(%a0)
-	jra .L946
-.L1074:
+	jra .L965
+.L1093:
 	pea 5(%a5)
 	pea 101.w
 	pea -1(%a5)
@@ -6513,9 +6644,9 @@ as_draw:
 	lea (20,%sp),%sp
 	moveq #61,%d0
 	cmp.l %a5,%d0
-	jne .L948
-	jra .L1064
-.L1071:
+	jne .L967
+	jra .L1083
+.L1090:
 	move.l %d6,%a1
 	addq.l #1,%d5
 	pea 5(%a1)
@@ -6528,9 +6659,9 @@ as_draw:
 	lea (20,%sp),%sp
 	mov3q.l #7,%d0
 	cmp.l %d5,%d0
-	jne .L1002
-	jra .L1063
-.L1069:
+	jne .L1021
+	jra .L1082
+.L1088:
 	pea .LC25
 	mov3q.l #4,-(%sp)
 	pea 25.w
@@ -6553,7 +6684,7 @@ as_draw:
 	movem.l -96(%fp),#15612
 	unlk %fp
 	rts
-.L951:
+.L970:
 	move.l %a1,%d1
 	moveq #10,%d2
 	divu.l %d2,%d1
@@ -6579,11 +6710,11 @@ as_draw:
 	move.b %d0,(%a0)
 	move.l %d2,%a0
 	move.l -56(%fp),%d2
-	jra .L953
-.L1016:
+	jra .L972
+.L1035:
 	lea (-23,%fp),%a0
-	jra .L950
-.L1073:
+	jra .L969
+.L1092:
 	move.l %a1,%d1
 	move.l %d1,%a1
 	clr.b (%a1)
@@ -6595,9 +6726,9 @@ as_draw:
 	jsr (%a3)
 	lea (16,%sp),%sp
 	cmp.l %d5,%d3
-	jne .L956
-	jra .L1074
-.L1004:
+	jne .L975
+	jra .L1093
+.L1023:
 	move.l %d1,%d7
 	moveq #10,%d2
 	divu.l %d2,%d7
@@ -6615,14 +6746,14 @@ as_draw:
 	move.l %a0,%d1
 	add.l #15,%d1
 	lea (%a5,%d0.l),%a0
-	jra .L1006
-.L1022:
+	jra .L1025
+.L1041:
 	move.l -52(%fp),%a1
-	jra .L1003
-.L1014:
+	jra .L1022
+.L1033:
 	moveq #62,%d0
-	jra .L949
-.L1070:
+	jra .L968
+.L1089:
 	move.l %a1,%d1
 	move.l %d1,%a0
 	clr.b (%a0)
@@ -6636,12 +6767,12 @@ as_draw:
 	mvz.b 5002(%a2),%d0
 	add.l %d5,%d1
 	cmp.l %d1,%d0
-	jne .L1009
-	jra .L1071
-.L1072:
+	jne .L1028
+	jra .L1090
+.L1091:
 	moveq #42,%d0
-	jra .L949
-.L999:
+	jra .L968
+.L1018:
 	move.l %d2,-(%sp)
 	move.l #791754240,%a1
 	mov3q.l #4,-(%sp)
@@ -6659,7 +6790,7 @@ as_draw:
 	jsr (%a4)
 	lea (36,%sp),%sp
 	tst.l %d4
-	jne .L1000
+	jne .L1019
 	pea .LC27
 	pea 12.w
 	pea 25.w
@@ -6669,7 +6800,7 @@ as_draw:
 	movem.l -96(%fp),#15612
 	unlk %fp
 	rts
-.L1067:
+.L1086:
 	move.b 1187503478,%d0
 	move.b 1187503479,%d3
 	move.b 1187503480,%d2
@@ -6684,7 +6815,7 @@ as_draw:
 	or.l %d4,%d0
 	or.l %d2,%d0
 	cmp.l #1074128072,%d0
-	jne .L962
+	jne .L981
 	mvz.b 5302(%a2),%d0
 	move.l 8(%fp),%a3
 	sub.l %a0,%a0
@@ -6694,25 +6825,25 @@ as_draw:
 	move.l %d7,%a1
 	lea (4714,%a1),%a1
 	add.l %a2,%a1
-.L963:
+.L982:
 	tst.b (%a1,%a0.l)
-	jeq .L967
+	jeq .L986
 	addq.l #1,%a0
 	moveq #15,%d2
 	cmp.l %a0,%d2
-	jne .L963
-.L967:
+	jne .L982
+.L986:
 	move.l %a0,%d2
 	subq.l #1,%d2
 	tst.l %a0
-	jeq .L966
+	jeq .L985
 	mvs.b (%a1,%d2.l),%d3
 	moveq #32,%d4
 	cmp.l %d3,%d4
-	jne .L1076
+	jne .L1095
 	move.l %d2,%a0
-	jra .L967
-.L966:
+	jra .L986
+.L985:
 	clr.b %d1
 	move.l %fp,%d2
 	add.l #-40,%d2
@@ -6721,18 +6852,18 @@ as_draw:
 	move.b %d1,-32(%fp)
 	move.b %d1,-40(%fp)
 	moveq #76,%d1
-.L969:
+.L988:
 	move.b %d1,(%a1)+
 	addq.l #1,%a0
 	move.b (%a0),%d1
 	cmp.l #.LC16+5,%a0
-	jne .L969
+	jne .L988
 	move.l -44(%fp),%a0
 	addq.l #1,%d0
 	moveq #9,%d1
 	move.l %a0,8(%fp)
 	cmp.l %d0,%d1
-	jcc .L1019
+	jcc .L1038
 	move.l %d0,%d1
 	moveq #10,%d4
 	divu.l %d4,%d1
@@ -6745,7 +6876,7 @@ as_draw:
 	move.b %d7,1(%a0)
 	add.l #48,%d1
 	move.b %d1,(%a0)
-.L973:
+.L992:
 	move.l 8(%fp),%a1
 	moveq #33,%d4
 	move.l 8(%fp),%a0
@@ -6754,7 +6885,7 @@ as_draw:
 	add.l #88,%d5
 	lea (328,%a1),%a1
 	move.l %a0,-44(%fp)
-.L982:
+.L1001:
 	mov3q.l #7,%d3
 	and.l %d4,%d3
 	move.l %d4,%d1
@@ -6767,17 +6898,17 @@ as_draw:
 	add.l %a1,%d0
 	lsl.l %d3,%d1
 	not.l %d1
-.L983:
+.L1002:
 	move.b (%a0),%d3
 	addq.l #8,%a0
 	and.l %d1,%d3
 	move.b %d3,-8(%a0)
 	cmp.l %d0,%a0
-	jne .L983
+	jne .L1002
 	addq.l #1,%d4
 	moveq #47,%d0
 	cmp.l %d4,%d0
-	jne .L982
+	jne .L1001
 	move.l %d2,-(%sp)
 	move.l -44(%fp),%a0
 	pea 34.w
@@ -6788,8 +6919,8 @@ as_draw:
 	jsr (%a3)
 	lea (16,%sp),%sp
 	tst.b -32(%fp)
-	jne .L1077
-.L985:
+	jne .L1096
+.L1004:
 	pea 46.w
 	pea 40.w
 	pea 33.w
@@ -6801,7 +6932,7 @@ as_draw:
 	moveq #9,%d1
 	addq.l #1,%d0
 	cmp.l %d0,%d1
-	jcc .L1020
+	jcc .L1039
 	move.l %d0,%d1
 	moveq #10,%d3
 	divu.l %d3,%d1
@@ -6810,7 +6941,7 @@ as_draw:
 	add.l #-24,%d2
 	add.l #48,%d1
 	move.b %d1,-24(%fp)
-.L986:
+.L1005:
 	moveq #10,%d4
 	moveq #9,%d7
 	remu.l %d4,%d1:%d0
@@ -6820,7 +6951,7 @@ as_draw:
 	move.b %d5,1(%a0)
 	mvz.b 5300(%a2),%d0
 	cmp.l %d0,%d7
-	jcs .L987
+	jcs .L1006
 	moveq #10,%d5
 	moveq #48,%d3
 	remu.l %d5,%d1:%d0
@@ -6837,8 +6968,8 @@ as_draw:
 	move.b %d7,1(%a1)
 	move.l 8(%fp),%a1
 	move.l %a1,-44(%fp)
-	jra .L989
-.L1076:
+	jra .L1008
+.L1095:
 	clr.b %d3
 	move.l -44(%fp),%a3
 	mov3q.l #7,%d4
@@ -6846,7 +6977,7 @@ as_draw:
 	move.b %d3,-32(%fp)
 	move.b %d3,-40(%fp)
 	cmp.l %a0,%d4
-	jcs .L1018
+	jcs .L1037
 	move.l 8(%fp),%a5
 	move.l %fp,%d2
 	add.l #-40,%d2
@@ -6856,46 +6987,46 @@ as_draw:
 	move.l %a1,%a3
 	add.l %a1,%d3
 	move.l %a5,-44(%fp)
-.L975:
+.L994:
 	move.b (%a3)+,(%a4)+
 	cmp.l %d3,%a3
-	jne .L975
+	jne .L994
 	clr.b %d3
 	move.l -44(%fp),%a3
 	move.l %a3,8(%fp)
 	move.b %d3,-40(%fp,%d0.l)
 	cmp.l %a0,%d0
-	jcc .L977
+	jcc .L996
 	move.l 8(%fp),%a3
 	move.l %a3,-44(%fp)
-.L976:
+.L995:
 	mvs.b (%a1,%d0.l),%d3
 	moveq #32,%d4
 	cmp.l %d3,%d4
-	jne .L1060
+	jne .L1079
 	addq.l #1,%d0
 	cmp.l %a0,%d0
-	jne .L976
-.L1060:
+	jne .L995
+.L1079:
 	move.l -44(%fp),%a3
 	move.l %a3,8(%fp)
-.L977:
+.L996:
 	move.l 8(%fp),%a5
 	add.l %d0,%a1
 	lea (-32,%fp),%a3
 	move.l %d1,%a4
 	move.l %a5,-44(%fp)
-.L978:
+.L997:
 	move.l %d0,%d3
 	add.l %a4,%d3
 	cmp.l %a0,%d3
-	jcc .L980
+	jcc .L999
 	move.b (%a1,%a4.l),(%a3)+
 	addq.l #1,%a4
 	mov3q.l #7,%d1
 	cmp.l %a4,%d1
-	jne .L978
-.L980:
+	jne .L997
+.L999:
 	clr.b %d0
 	move.l -44(%fp),%a0
 	moveq #33,%d4
@@ -6908,22 +7039,22 @@ as_draw:
 	lea (328,%a1),%a1
 	move.l %a0,-44(%fp)
 	move.b %d0,-32(%fp,%a4.l)
-	jra .L982
-.L1018:
+	jra .L1001
+.L1037:
 	move.l 8(%fp),%a3
 	mov3q.l #7,%d0
 	move.l %a3,-44(%fp)
-.L970:
+.L989:
 	mvs.b (%a1,%d0.l),%d3
 	moveq #32,%d4
 	cmp.l %d3,%d4
-	jeq .L1078
+	jeq .L1097
 	subq.l #1,%d0
 	tst.l %d0
-	jne .L970
+	jne .L989
 	move.l -44(%fp),%a3
 	move.l %a3,8(%fp)
-.L1059:
+.L1078:
 	move.l 8(%fp),%a5
 	mov3q.l #7,%d0
 	move.l %fp,%d2
@@ -6933,14 +7064,14 @@ as_draw:
 	move.l %a1,%a3
 	add.l %a1,%d3
 	move.l %a5,-44(%fp)
-	jra .L975
-.L1078:
+	jra .L994
+.L1097:
 	move.l -44(%fp),%a3
 	sub.l %d0,%d2
 	mov3q.l #7,%d3
 	move.l %a3,8(%fp)
 	cmp.l %d2,%d3
-	jcs .L1059
+	jcs .L1078
 	move.l 8(%fp),%a5
 	move.l %fp,%d2
 	add.l #-40,%d2
@@ -6949,8 +7080,8 @@ as_draw:
 	move.l %a1,%a3
 	add.l %a1,%d3
 	move.l %a5,-44(%fp)
-	jra .L975
-.L1019:
+	jra .L994
+.L1038:
 	moveq #10,%d5
 	remu.l %d5,%d1:%d0
 	clr.b %d7
@@ -6958,20 +7089,20 @@ as_draw:
 	add.l #48,%d1
 	move.b %d1,(%a0)
 	move.b %d7,1(%a0)
-	jra .L973
-.L1077:
+	jra .L992
+.L1096:
 	pea -32(%fp)
 	pea 41.w
 	pea 12.w
 	move.l 8(%fp),-(%sp)
 	jsr (%a3)
 	lea (16,%sp),%sp
-	jra .L985
-.L1020:
+	jra .L1004
+.L1039:
 	move.l %fp,%d2
 	add.l #-24,%d2
 	move.l %d2,%a0
-	jra .L986
+	jra .L1005
 	.size	as_draw, .-as_draw
 	.section	.rodata
 	.type	list.0, @object
@@ -7140,4 +7271,4 @@ st_at:
 	.local	evlog
 	.comm	evlog,4,2
 	.local	st
-	.comm	st,100674,2
+	.comm	st,100676,2

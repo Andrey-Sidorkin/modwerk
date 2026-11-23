@@ -181,6 +181,9 @@ struct as_state {
     int8_t sl_restart;       /* YES on the page while one plays: after ending, start again from this song; -1 none */
     uint8_t sl_n, sl_cur;    /* its songs, and the one playing (or chosen) */
     uint8_t sl_list;         /* the setlist playing (0 = 1) */
+    int8_t resume;           /* a load of a project left in a setlist: that setlist (0 = 1), started again once the load is
+                              * done; -1 none */
+    uint8_t resume_cur;      /* and the song it was on */
     uint8_t peek;            /* CUE + YES on the main screen: the playing setlist shown while CUE is held */
     uint8_t peek_cur;        /* there, the cursor (UP/DOWN) */
     uint8_t peek_next;       /* and the song marked to come next ('>'; a further YES moves it to the cursor); 0xff none */
@@ -233,6 +236,7 @@ static struct as_state *ready(void)
     s->restore = -1;
     s->sl_req = -1;
     s->sl_restart = -1;
+    s->resume = -1;
     s->lists_unread = 1;                                 /* a project may be open already: its setlists not read */
     s->mode_pref = rd32(ARR_MODE) ? 1 : 0;
     s->since_hook = 4000;
@@ -361,6 +365,8 @@ static void write_place(struct as_state *s)
     s->place[4] = s->book;
     for (unsigned b = 0; b < BOOKS; ++b) s->place[5 + b] = s->last[b];
     s->place[21] = s->mode_pref;                         /* not stock's flag: LOAD clears it before its own save */
+    s->place[22] = (uint8_t)(s->sl_active ? 0x80u | s->sl_list : 0u);   /* a setlist, so a load comes back into it */
+    s->place[23] = s->sl_cur;
     place_path(s->path, "work");
     put_data(s, s->place, sizeof s->place);
 }
@@ -368,6 +374,7 @@ static void write_place(struct as_state *s)
 /* arrbook.work into the memory of choices: the book the project was left on, or -1 when it has none. */
 static int read_place(struct as_state *s)
 {
+    s->resume = -1;
     place_path(s->path, "work");
     if (!get_data(s, s->place, sizeof s->place)) { ev(6); return -1; }
     ev(5); ev(s->place[4]);
@@ -375,6 +382,8 @@ static int read_place(struct as_state *s)
         || s->place[4] >= BOOKS) return -1;
     for (unsigned b = 0; b < BOOKS; ++b) s->last[b] = (uint8_t)(s->place[5 + b] & 7u);
     s->mode_on = s->place[21] == 1;
+    s->resume = (int8_t)(s->place[22] & 0x80u ? s->place[22] & 15u : -1);
+    s->resume_cur = (uint8_t)(s->place[23] & 15u);
     s->mode_pref = s->mode_on;
     return s->place[4];
 }
@@ -780,6 +789,7 @@ int as_writer(uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4)
             if (!ok) s->failed = 1;
         }
         write_lists(s);
+        write_place(s);                                   /* the setlist in it, or none once it ended */
         remember(s);
         return 0;
     }
@@ -907,6 +917,7 @@ void as_project_new(void)
     s->mode_on = 0;
     for (unsigned b = 0; b < BOOKS; ++b) s->last[b] = 0;
     sl_clear(s);                                          /* a new project has no setlists */
+    s->resume = -1;
     s->page = 0;
     s->sl_active = 0; s->sl_req = -1; s->sl_go = 0; s->sl_end = 0; s->reread = 0;
 }
@@ -1376,6 +1387,19 @@ void as_tick(void *api)
         }
     }
     if (s->reread && s->pending < 0 && !s->reread_posted && stopped() && post_write() >= 0) s->reread_posted = 1;
+    /* A project left in a setlist: once its load is over (the book back, arranger mode restored, quiet), that setlist
+     * again from the song it was on, stopped, as YES on the SETLSTS page starts it. */
+    if (s->resume >= 0 && !s->loading && s->since_hook > 240 && s->restore < 0 && s->pending < 0 && !s->redraw
+        && !s->mode_on && !s->sl_active && !s->lists_unread && stopped()) {
+        unsigned l = (unsigned)s->resume;
+        if (!s->lists.count[l] || s->resume_cur >= s->lists.count[l]) s->resume = -1;   /* changed since: not again */
+        else {
+            s->lists.open = (uint8_t)l;
+            s->sl_req = (int8_t)s->resume_cur;
+            if (post_write() >= 0) s->resume = -1;
+            else s->sl_req = -1;                          /* stock still busy: again next frame */
+        }
+    }
     title_follow(s);
     if (s->failed) { s->failed = 0; message("BOOK FILE ERROR"); }
     if (s->book && s->pending < 0 && ++s->ticks >= 120) { s->ticks = 0; remember(s); }
