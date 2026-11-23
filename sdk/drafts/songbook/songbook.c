@@ -107,7 +107,7 @@ static void wr8(uint32_t a, uint32_t v) { *(volatile uint8_t *)a = (uint8_t)v; }
 static uint32_t rd32(uint32_t a) { return (uint32_t)rd8(a) << 24 | (uint32_t)rd8(a + 1) << 16 | (uint32_t)rd8(a + 2) << 8 | rd8(a + 3); }
 static void wr32(uint32_t a, uint32_t v) { wr8(a, v >> 24); wr8(a + 1, v >> 16); wr8(a + 2, v >> 8); wr8(a + 3, v); }
 
-#define MAGIC 0x41535333u /* "ASS3": card builds do not zero .bss */
+#define MAGIC 0x41535334u /* "ASS4": card builds do not zero .bss; a new layout, a new mark */
 
 /* Setlists: 16 of up to 16 songs, each a book, its slot and the name it had (arrlists.work). */
 #define LISTS 16u

@@ -1296,7 +1296,7 @@ ready:
 	move.l st_at,%a1
 	subq.l #4,%sp
 	move.l %d2,-(%sp)
-	move.l #1095979827,%d0
+	move.l #1095979828,%d0
 	cmp.l (%a1),%d0
 	jeq .L217
 	move.l %a1,%d1
@@ -1307,7 +1307,7 @@ ready:
 	cmp.l %d1,%a0
 	jne .L219
 	st %d1
-	move.l #1095979827,(%a1)
+	move.l #1095979828,(%a1)
 	move.b %d1,5(%a1)
 	move.b 269455136,%d0
 	move.b 269455137,%d2
