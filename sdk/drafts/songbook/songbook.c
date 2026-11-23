@@ -82,7 +82,6 @@
 #define ARR_EVENT 0x400c0c41u       /* the token stock posts as the arranger takes a chain (0x4004a834): the rows drawn again */
 #define CHAIN 0x80006694u           /* stock's CHAIN: the slot the arranger moves to past its last row, -1 none (0x4004a7e2) */
 #define KEYS 0x46c7d8deu            /* each key code's routed press handler, 0x18 apart (as arr-rows reads it) */
-#define MENU_YES 0x4003395cu        /* YES's handler while the Arranger menu or its CHANGE list is in front (ot_emu, 24 Nov 2026) */
 #define MAIN_YES 0x4005e4c8u        /* YES's handler on the main screen (measured under ot_emu: menu 0x4003395c, editor 0x40058f34) */
 #define LIST_CHOICE 0x400c0ba8u      /* ARR > CHANGE: the arrangement under the cursor, as YES selects it (0x400612b4) */
 
@@ -158,6 +157,7 @@ struct as_state {
     uint8_t loading;         /* a load or reload began: the slots hold the old book until stock's new-project step */
     uint8_t reloaded_slots;  /* that step came: stock now puts arr01-08 in the slots, and a return may follow it */
     uint8_t hush;            /* frames after a switch of ours in which the job's NOW SAFE TO EJECT! is closed */
+    uint8_t ours;            /* the card job posted is the module's own (its NOW SAFE TO EJECT! is closed) */
     int8_t restore_rc;       /* the last answer to posting the return after a load, for the diagnostic word */
     uint8_t loads, reloads;  /* project loads and reloads seen, for the diagnostic word */
     uint8_t place[24];       /* arrbook.work: magic, book, the 16 last choices */
@@ -233,9 +233,10 @@ void as_host_back_memory(void) { st = saved_st; }     /* ... and this one comes 
 #endif
 
 static void title_follow(const struct as_state *s);
-/* The Arranger menu (or its BOOKS list) is the screen in front: CHANGE's window word stays set under some screens. */
-static int arr_menu_front(void) { return rd32(KEYS + 0x31u * 0x18u) == MENU_YES; }
+
 static void load_read(struct as_state *s);
+static int post_write(void);
+static int our_post(struct as_state *s) { int rc = post_write(); if (rc >= 0) s->ours = 1; return rc; }
 /* A LOAD of a project other than the one in use: stock's project name still names the last one until the load is over,
  * the load job's record the new one (the developer's MKI, 24 November 2026). */
 static int loading_other(void)
@@ -814,9 +815,20 @@ static int sl_finish(struct as_state *s)
 
 /* ---------------------------------------------------------------- the card task */
 /* Stock's arrangement writer, stepped into at its entry (the site's jmp reaches as_writer_entry below). */
+static int as_writer_(struct as_state *s, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4);
+/* Every job the module posts (a switch, a setlist's start, end or restart, a load's read) borrows SYNC TO CARD's, which
+ * ends with NOW SAFE TO EJECT!: closed when it opens, counted from the job's end (the developer's MKI: it showed when a
+ * setlist was restarted from another song, 24 November 2026). */
 int as_writer(uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4)
 {
     struct as_state *s = ready();
+    if (s->ours) { s->ours = 0; s->hush = 1; }
+    int rc = as_writer_(s, a1, a2, a3, a4);
+    if (s->hush) s->hush = 1;
+    return rc;
+}
+static int as_writer_(struct as_state *s, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4)
+{
     if (s->load_read && (s->load_posted || (!s->loading && !loading_other())))
         load_read(s);                                     /* the module's own job after the load, or any card job once
                                                            * stock's project name is the new one */
@@ -913,7 +925,6 @@ int as_writer(uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4)
         else write_place(s);                              /* the project says it is in this setlist, from its start */
     }
     s->sl_req = -1;
-    if (s->hush) s->hush = 1;                             /* its NOW SAFE TO EJECT! comes after stock's own part */
     remember(s);
     return rc;
 }
@@ -1129,7 +1140,7 @@ static int lists_ready(struct as_state *s)
     if (!s->lists_unread) return 1;
     if (!stopped()) { message("STOP TO READ SETLISTS"); return 0; }   /* stock's card job would stop playback */
     if (!s->lists_req && s->pending < 0) {
-        int rc = post_write();
+        int rc = our_post(s);
         if (rc == -7) { s->lists_unread = 0; return 1; }      /* no project: nothing to read */
         if (rc >= 0) s->lists_req = 1;
     }
@@ -1330,10 +1341,10 @@ static int page_key_(struct as_state *s, int code, int pressed)
         }
         if (!n) break;                                         /* YES: the setlist from this song */
         if (!stopped()) { message("STOP TO START"); break; }
-        if (s->sl_active) { s->sl_end = 1; s->sl_restart = (int8_t)s->page_cur; post_write(); s->page = 0; break; }
+        if (s->sl_active) { s->sl_end = 1; s->sl_restart = (int8_t)s->page_cur; our_post(s); s->page = 0; break; }
         {
             s->sl_req = (int8_t)s->page_cur;
-            int rc = post_write();
+            int rc = our_post(s);
             if (rc < 0) { s->sl_req = -1; message(rc == -7 ? "NO PROJECT" : "CARD BUSY"); break; }
             s->page = 0;
         }
@@ -1395,7 +1406,7 @@ int as_key(int code, int pressed)
         return 1;
     }
     if (s->page) return page_key(s, code, pressed);
-    if (code == K_YES && (s->cue_yes || (s->cue_down && rd32(CHANGE_WINDOW) && arr_menu_front()))) {
+    if (code == K_YES && (s->cue_yes || (s->cue_down && rd32(CHANGE_WINDOW)))) {
         if (!pressed) { s->cue_yes = 0; return 1; }           /* its release is ours too */
         if (s->cue_yes || s->pending >= 0) return 1;          /* a repeat, or a switch under way */
         s->cue_yes = 1;
@@ -1403,7 +1414,7 @@ int as_key(int code, int pressed)
         return 1;
     }
     if (code != K_LEFT && code != K_RIGHT) return 0;
-    if (!rd32(CHANGE_WINDOW) || !arr_menu_front()) return 0;   /* only in ARR > BOOKS, in front */
+    if (!rd32(CHANGE_WINDOW)) return 0;                      /* only in ARR > BOOKS */
     if (!pressed) return 1;                                   /* its release is ours too */
     if (s->pending >= 0) return 1;                            /* a switch is under way */
     if (s->cue_down) { move_arr(s, code == K_RIGHT ? 1 : -1); return 1; }
@@ -1412,7 +1423,7 @@ int as_key(int code, int pressed)
     if (to < 0 || to >= (int)BOOKS) return 1;
     s->pending = (int8_t)to;
     s->failed = 0;
-    int rc = post_write();                                    /* stock: -7 no project, else busy or a save pending */
+    int rc = our_post(s);                                    /* stock: -7 no project, else busy or a save pending */
     if (rc < 0) { s->pending = -1; message(rc == -7 ? "NO PROJECT" : "CARD BUSY"); }
     return 1;
 }
@@ -1426,14 +1437,15 @@ void as_tick(void *api)
     struct as_state *s = ready();
     if (api) ((struct as_api *)api)->value = (uint32_t)s->book  /* the book, then the last seven events, newest lowest */
         | (evlog & 0x0fffffffu) << 4;
-    /* The SETLSTS page lives over the Arranger menu: another screen in front closes it. */
-    if (s->page && !arr_menu_front()) s->page = 0;
     /* Stock draws the list's names once, when it opens: after a switch, draw them again from the new book. */
     if (s->redraw && s->pending < 0) {
         /* The book's own last choice, as YES in the list makes it. Stock refuses it while a change of its own is
          * pending (0x800066a0; right after a RELOAD in arranger mode, on the developer's MKI): again next frame, for up
          * to two seconds, so the main screen does not keep the old book's name. */
-        int r = select_arr(s->last[s->book]);
+        /* A project going back into a setlist: its first song is chosen when the setlist starts, so the book's own
+         * choice is not made first (the developer's MKI, 24 November 2026: the pattern changed several times while
+         * the project came back). */
+        int r = s->reapply && s->resume >= 0 ? 0 : select_arr(s->last[s->book]);
         /* Returning after a LOAD of another project, the arranger's run state can stay set with nothing playing (the
          * developer's MKI, 24 November 2026: the book came back on arrangement 1, every choice refused): once half a
          * second of refusals has passed, stopped, the arranger is reset as stock resets it for each new project, and
@@ -1465,7 +1477,7 @@ void as_tick(void *api)
         else if (stopped()) {
             s->pending = s->restore;
             s->reapply = 1;
-            int rc = post_write();
+            int rc = our_post(s);
             s->restore_rc = (int8_t)rc;
             ev(rc >= 0 ? 7u : 8u);
             if (rc >= 0) { s->restore = -1; s->reloaded_slots = 0; }
@@ -1541,15 +1553,15 @@ void as_tick(void *api)
         /* The last song has no chain: it ends as stock ends any arrangement, on its END OF ARR row. */
         if (s->song_at[next] == 0xff) { if (rd32(CHAIN) != 0xffffffffu) { wr32(CHAIN, 0xffffffffu); post_event(); } }
         else if (rd32(CHAIN) != next_slot) set_chain(next_slot);
-        if (rd32(CHANGE_WINDOW) && arr_menu_front() && stopped() && s->pending < 0) {
+        if (rd32(CHANGE_WINDOW) && stopped() && s->pending < 0) {
             s->sl_end = 1;
-            if (post_write() < 0) s->sl_end = 0;            /* busy: again next frame */
+            if (our_post(s) < 0) s->sl_end = 0;            /* busy: again next frame */
         }
     }
     if (s->load_read && !s->loading && !s->load_posted && s->since_hook > 60 && s->pending < 0 && stopped()
-        && post_write() >= 0) s->load_posted = 1;         /* the new project's files, read by the card task */
+        && our_post(s) >= 0) s->load_posted = 1;         /* the new project's files, read by the card task */
     if (!s->sl_active && slots_are_foreign() && s->resume < 0 && s->sl_req < 0 && s->pending < 0 && !s->reread_posted
-        && !s->loading && s->since_hook > 240 && stopped() && post_write() >= 0) s->reread_posted = 1;   /* the book back into slots 7 and 8 (a resume's job
+        && !s->loading && s->since_hook > 240 && stopped() && our_post(s) >= 0) s->reread_posted = 1;   /* the book back into slots 7 and 8 (a resume's job
                                                                     * does it first anyway) */
     /* A project left in a setlist: once its load is over (the book back, arranger mode restored, quiet), that setlist
      * again from the song it was on, stopped, as YES on the SETLSTS page starts it. */
@@ -1560,7 +1572,7 @@ void as_tick(void *api)
         else {
             s->lists.open = (uint8_t)l;
             s->sl_req = (int8_t)s->resume_cur;
-            if (post_write() >= 0) s->resume = -1;
+            if (our_post(s) >= 0) s->resume = -1;
             else s->sl_req = -1;                          /* stock still busy: again next frame */
         }
     }
@@ -1786,7 +1798,7 @@ void as_draw(unsigned char *frame)
     if (s->sl_active && !s->sl_go && !s->page && !rd32(CHANGE_WINDOW) && rd32(KEYS + K_YES * 0x18u) == MAIN_YES)
         draw_mark(s, frame);
     if (s->page) { draw_page(s, frame); return; }
-    if (!rd32(CHANGE_WINDOW) || !arr_menu_front()) return;
+    if (!rd32(CHANGE_WINDOW)) return;
     static const uint8_t book[4] = {G_B, G_O, G_O, G_K}, list[4] = {G_L, G_I, G_S, G_T};
     label(frame, 0, book, s->book + 1u);
     label(frame, 55, list, s->lists.open + 1u);

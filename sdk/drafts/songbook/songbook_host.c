@@ -900,8 +900,6 @@ int main(void)
       check("on song 2, the song it was on", chosen == 6 && cs1[W(6) + 100] == s1 && chain() == 7);
       cs1[W(3) + 5] ^= 1; }
 
-    /* Another screen in front of the Arranger menu (the PROJECT menu: its own YES): the page closes, and the BOOKS
-     * list's LEFT/RIGHT, labels and CUE + YES are stock's (the developer's MKI, 24 November 2026) */
     uint32_t yes_was = yes_handler; yes_handler = 0;  /* the Arranger menu in front */
     /* the YES that opened the page (stock's menu took its press): its release is stock's, or stock keeps YES routed to
      * the Arranger menu and the next YES anywhere opens SETLSTS (the developer's MKI, PROJECT > CHANGE) */
@@ -909,13 +907,12 @@ int main(void)
     check("the release of the YES that opened the page goes to stock", as_key(YES, 0) == 0);
     check("NO's press and release are the page's, and close it", as_key(NO, 1) == 1 && (page_draw(), ntexts == 0) && as_key(NO, 0) == 1);
     check("a YES after that is stock's", as_key(YES, 1) == 0 && as_key(YES, 0) == 0);
+    /* Stock re-routes YES while FUNC or CUE is held: the page stays open (the developer's MKI, 24 November 2026: FUNC
+     * closed the page with a check on YES's route) */
     as_setlists_open(); as_tick(0);
-    check("the page stays open over the Arranger menu", (page_draw(), ntexts > 0));
-    yes_handler = 0x400650a0u; as_tick(0);
-    check("the PROJECT menu in front closes it", (page_draw(), ntexts == 0));
-    change_window = 0x46c7d384u;
-    { unsigned b0 = book(); check("LEFT/RIGHT under the PROJECT menu are stock's", as_key(RIGHT, 1) == 0 && as_key(RIGHT, 0) == 0 && book() == b0); }
-    yes_handler = 0; change_window = 0; as_tick(0);
+    as_key(FUNC, 1); yes_handler = 0x400402ecu; as_tick(0);
+    check("FUNC held, YES re-routed: the page stays open", (page_draw(), ntexts > 0));
+    yes_handler = 0; as_key(FUNC, 0); tap(NO); as_tick(0);
     /* FUNC + YES's name editor takes every key: a CUE released in it is not left held */
     as_setlists_open(); as_key(CUE, 1); as_key(FUNC, 1); tap(YES);
     memcpy(named, "LIST 1         ", 16); named[15] = 0; as_list_named(1); job();
@@ -1009,6 +1006,14 @@ int main(void)
       tap(NO); }
 
     check("stock's CHAIN ARR. %d text (and its shared %d) was never written", shared_writes == 0);
+    /* A setlist restarted from another song while one plays: that job's NOW SAFE TO EJECT! is closed too (the
+     * developer's MKI, 24 November 2026) */
+    { uint32_t y = yes_handler; yes_handler = 0; change_window = 0x46c7d384u; as_tick(0); job(); change_window = 0; yes_handler = y; as_tick(0); }
+    as_setlists_open(); tap(UP); tap(UP); tap(YES); job(); for (int i = 0; i < 300; ++i) as_tick(0);   /* from song 1 */
+    as_setlists_open(); tap(DOWN); tap(YES);          /* again, from song 2 */
+    { int c0 = closes; job(); msg_up = 1; for (int i = 0; i < 5; ++i) as_tick(0);
+      check("restarting a playing setlist from another song: its NOW SAFE TO EJECT! closed", closes == c0 + 1); msg_up = 0; }
+
     printf("%d checks, %d failed\n", checks, failures);
     return failures != 0;
 }
