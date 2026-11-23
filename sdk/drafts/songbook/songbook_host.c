@@ -73,6 +73,7 @@ void host_wr8(uint32_t a, uint8_t v)
     if (a >= 0x100f8f10u && a <= 0x100f8f23u) { rec[a - 0x100f8f10u] = v; return; }
     if (a == 0x80000010u) { mode_wanted = v; return; }
     if (a >= 0x400c0ba0u && a < 0x400c0bb0u) { list[a - 0x400c0ba0u] = v; return; }
+    if (a >= 0x80006694u && a < 0x80006698u) { misc[a - 0x80004f00u] = v; return; }   /* stock's CHAIN */
     fprintf(stderr, "write of 0x%08x\n", a);
 }
 
@@ -177,6 +178,9 @@ void host_text(unsigned char *frame, int x, int top, const char *s)
     if (ntexts < 16) { texts[ntexts].x = x; texts[ntexts].top = top; snprintf(texts[ntexts].t, sizeof texts[ntexts].t, "%s", s); ++ntexts; }
 }
 static const char *text_at(int top) { for (int i = 0; i < ntexts; ++i) if (texts[i].top == top) return texts[i].t; return ""; }
+static uint32_t chain(void) { const uint8_t *c = &misc[0x80006694u - 0x80004f00u]; return (uint32_t)c[0] << 24 | c[1] << 16 | c[2] << 8 | c[3]; }
+/* The arranger past its last row: stock takes the CHAIN (0x4004a7e2) */
+static void stock_chain(void) { if (chain() != 0xffffffffu) { chosen = (uint8_t)chain(); memset(&misc[0x80006694u - 0x80004f00u], 0xff, 4); } }
 static void page_draw(void) { memset(lcd, 0, sizeof lcd); ntexts = 0; as_draw(lcd); }
 void host_set(unsigned char *frame, int x, int y, int on) { unsigned char *b = frame + x * 8 + 7 - (y >> 3), m = (unsigned char)(1u << (y & 7)); if (on) *b |= m; else *b &= (unsigned char)~m; }
 static int lit(int x, int y) { return lcd[x * 8 + 7 - (y >> 3)] >> (y & 7) & 1; }
@@ -620,7 +624,7 @@ int main(void)
     check("the page: SETLIST 1 and its count on the title row", !strcmp(text_at(4), "SETLIST 1") && !strcmp(texts[1].t, "4/16"));
     check("its songs as book.arrangement and name", !strcmp(text_at(12), "1.4 INTRO") && !strcmp(text_at(19), "1.1 SONG A") && !strcmp(text_at(26), "1.5 SONG E") && !strcmp(text_at(33), "1.8 SONG H"));
     check("the title row inverted, the first song under the cursor too", lit(60, 3) && lit(100, 11) && !lit(100, 18));
-    check("UP/DOWN, YES and NO are the page's; PLAY stays stock's", tap(DOWN) == 1 && tap(UP) == 1 && tap(YES) == 1 && tap(PLAY) == 0);
+    check("UP/DOWN are the page's; PLAY stays stock's", tap(DOWN) == 1 && tap(UP) == 1 && tap(PLAY) == 0);
     tap(DOWN); tap(DOWN); page_draw();
     check("DOWN moves the cursor", lit(100, 25) && !lit(100, 11));
     as_key(CUE, 1); tap(LEFT); as_key(CUE, 0); job();
@@ -649,6 +653,63 @@ int main(void)
     as_project_load(); page_draw();
     check("a project load closes the page", ntexts == 0);
     as_project_new(); job();
+
+    /* playing a setlist: B2 3, B1 2, B1 5 (one song from another book's file, two from the slots) */
+    memset(&misc[0x80006694u - 0x80004f00u], 0xff, 4);
+    files_remove("/SET/PROJ/arrlists.work");
+    as_project_new();                                 /* a new project, not a load: no setlists */
+    mark(0x10); cs1[CHG] = 0xff; job();               /* book 1, saved */
+    change_window = 0x46c7d384u;
+    tap(RIGHT); job(); as_tick(0);
+    mark(0x20); cs1[CHG] = 0xff; job();               /* book 2, saved as arr09-16 */
+    choose(2); as_key(CUE, 1); tap(YES); as_key(CUE, 0);
+    tap(LEFT); job(); as_tick(0);                     /* back to book 1 */
+    choose(1); as_key(CUE, 1); tap(YES); as_key(CUE, 0);
+    choose(4); as_key(CUE, 1); tap(YES); as_key(CUE, 0);
+    change_window = 0; job();
+    check("the setlist: B2 3, B1 2, B1 5", book() == 0 && lists_count(0) == 3 && entry(0, 0)[0] == 1 && entry(0, 0)[1] == 2 && entry(0, 2)[1] == 4);
+    uint8_t s0 = find("/SET/PROJ/arr11.work")->work[100], s1 = cs1[W(1) + 100], s2 = cs1[W(4) + 100], b7 = cs1[W(6) + 100], b8 = cs1[W(7) + 100];
+    uint8_t saved2 = find("/SET/PROJ/arr02.work")->saved[100];
+    playing = 1; as_setlists_open(); tap(YES);
+    check("YES while playing: it says so and starts nothing", !strcmp(last_message, "STOP TO START") && (page_draw(), ntexts > 0));
+    playing = 0;
+    int pp = posted; tap(YES);
+    check("YES on the first song posts the card job and closes the page", posted == pp + 1 && (page_draw(), ntexts == 0));
+    job();
+    check("the first two songs in slots 7 and 8: one from book 2's file, one from book 1's slot", cs1[W(6) + 100] == s0 && cs1[W(7) + 100] == s1);
+    as_tick(0);
+    check("the first song chosen, the second chained, arranger mode on", chosen == 6 && chain() == 7 && arr_mode == 1);
+    stock_chain(); as_tick(0);
+    check("past the first song: the third into the freed slot 7, chained", chosen == 7 && cs1[W(6) + 100] == s2 && chain() == 6);
+    cs1[W(7) + 200] ^= 0xff;                         /* the second song edited while it plays */
+    uint8_t edited = cs1[W(7) + 200];
+    { int w = writes; job();
+      check("a save while the setlist plays writes none of the book's files", writes == w && find("/SET/PROJ/arr07.work")->work[100] == b7); }
+    stock_chain(); as_tick(0);
+    check("past the second song: the last one plays, nothing chained", chosen == 6 && chain() == 0xffffffffu);
+    change_window = 0x46c7d384u; pp = posted; as_tick(0);
+    check("opening ARR > CHANGE, stopped, ends the setlist with a card job", posted == pp + 1);
+    job(); as_tick(0);
+    check("the edited song saved to its own file, arr02.work", find("/SET/PROJ/arr02.work")->work[200] == edited);
+    check("its ARR SAVE copy kept", find("/SET/PROJ/arr02.work")->saved[100] == saved2);
+    check("the book back in its slots: slots 7 and 8 its own again, the edit in slot 2", cs1[W(6) + 100] == b7 && cs1[W(7) + 100] == b8 && cs1[W(1) + 200] == edited && cs1[CHG] == 0);
+    check("songs not edited are not written", find("/SET/PROJ/arr11.work")->work[100] == s0 && chain() == 0xffffffffu);
+    change_window = 0;
+    /* a song whose file does not read: the setlist does not start, the book stays */
+    fail_read_path = "/SET/PROJ/arr11.work";
+    as_setlists_open(); tap(YES); job(); as_tick(0);
+    check("a song file that does not read: reported, the book as it was", !strcmp(last_message, "BOOK FILE ERROR") && cs1[W(6) + 100] == b7);
+    { int sw = stock_writes; cs1[CHG] = 1; job();
+      check("and no setlist: the next save writes the book again", stock_writes == sw + 1); }
+    fail_read_path = 0;
+    /* starting from the last song: nothing chained */
+    as_setlists_open(); tap(DOWN); tap(DOWN); tap(YES); job(); as_tick(0);
+    check("from the last song: it alone, nothing chained", chosen == 6 && cs1[W(6) + 100] == s2 && chain() == 0xffffffffu);
+    { int sw = stock_writes; job();
+      check("while it plays, the next save leaves the book's files alone", stock_writes == sw); }
+    as_project_load(); as_project_new(); mark(0x10); as_tick(0);
+    { int sw = stock_writes; cs1[CHG] = 1; job();
+      check("a project load ends it: the next save writes the book again", stock_writes == sw + 1); }
 
     printf("%d checks, %d failed\n", checks, failures);
     return failures != 0;

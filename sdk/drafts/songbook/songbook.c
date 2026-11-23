@@ -72,6 +72,7 @@
 #define ARR_MODE_ON 0x4005200cu      /* stock's switch into arranger mode (FUNC + PATTERN's, 0x4006103e); nothing if on */
 #define LIST_TOP 0x400c0ba0u         /* ARR > CHANGE: the first row shown */
 #define LIST_CURSOR 0x400c0ba4u      /* ARR > CHANGE: the cursor's row (stock opens the list with it on the choice) */
+#define CHAIN 0x80006694u           /* stock's CHAIN: the slot the arranger moves to past its last row, -1 none (0x4004a7e2) */
 #define LIST_CHOICE 0x400c0ba8u      /* ARR > CHANGE: the arrangement under the cursor, as YES selects it (0x400612b4) */
 
 #define REC_MAGIC 0x41534231u        /* "ASB1" */
@@ -154,6 +155,19 @@ struct as_state {
     uint8_t page;            /* the SETLSTS page is open (the Arranger menu's CHAIN item, replaced) */
     uint8_t page_cur, page_top;  /* its cursor (a song of the open setlist) and the first song shown */
     uint8_t page_play;       /* a FUNC + PLAY taken on the page: PLAY's release is ours too */
+    /* A setlist playing: its songs in the module's memory, two of them at a time in slots 7 and 8 (SL_A, SL_B), the
+     * next one chained by stock's own CHAIN. The book's other slots stay; its files are not written meanwhile. */
+    int8_t sl_req;           /* YES on the page: the song to start from, for the card job; -1 none */
+    uint8_t sl_active;       /* the slots hold setlist songs */
+    uint8_t sl_go;           /* loaded: the UI task selects the first song and sets the chain */
+    uint8_t sl_end;          /* ending: the card job writes edited songs back and reads the book again */
+    int8_t sl_restart;       /* YES on the page while one plays: after ending, start again from this song; -1 none */
+    uint8_t sl_n, sl_cur;    /* its songs, and the one playing (or chosen) */
+    uint8_t sl_cur_slot;     /* the slot that song is in (SL_A or SL_B) */
+    uint8_t song_at[2];      /* the song in SL_A, SL_B; 0xff none */
+    uint16_t sl_edited;      /* songs changed while they played: written to their own files at the end */
+    struct sl_entry sl_e[LIST_LEN];
+    uint8_t songs[LIST_LEN][BLOCK];
     uint16_t ticks;
     char path[260];
     char path2[260];
@@ -190,6 +204,8 @@ static struct as_state *ready(void)
     s->pending = -1;
     evlog = rd32(RECORD + 16);                           /* the events before a power cycle */
     s->restore = -1;
+    s->sl_req = -1;
+    s->sl_restart = -1;
     s->mode_pref = rd32(ARR_MODE) ? 1 : 0;
     s->since_hook = 4000;
     return s;
@@ -515,11 +531,121 @@ static void read_lists(struct as_state *s)
     s->lists_dirty = 0;
 }
 
+/* ---------------------------------------------------------------- a setlist playing */
+#define SL_A 6u
+#define SL_B 7u
+static uint32_t work_at(unsigned slot) { return WORKING + slot * BLOCK; }
+static void block_from_slot(uint8_t *to, unsigned slot) { for (uint32_t i = 0; i < BLOCK; ++i) to[i] = rd8(work_at(slot) + i); }
+static void block_to_slot(unsigned slot, const uint8_t *from) { for (uint32_t i = 0; i < BLOCK; ++i) wr8(work_at(slot) + i, from[i]); }
+
+/* Song k into one of the setlist's two slots: the arranger plays it from there. */
+static void put_song(struct as_state *s, unsigned which, unsigned k)
+{
+    block_to_slot(which ? SL_B : SL_A, s->songs[k]);
+    s->song_at[which] = (uint8_t)k;
+    wr8(CHANGED, (uint8_t)(rd8(CHANGED) & ~(1u << (which ? SL_B : SL_A))));
+}
+
+/* A song leaves its slot: what was edited in it while it played is kept, to be written to its own file at the end. */
+static void take_back(struct as_state *s, unsigned which)
+{
+    unsigned k = s->song_at[which], slot = which ? SL_B : SL_A;
+    if (k >= s->sl_n) return;
+    for (uint32_t i = 0; i < BLOCK; ++i) {
+        uint8_t v = rd8(work_at(slot) + i);
+        if (v != s->songs[k][i]) { s->songs[k][i] = v; s->sl_edited |= (uint16_t)(1u << k); }
+    }
+}
+
+/* The file a setlist song lives in: arr<NN>.work, or book 1's backup while another book is in the slots. */
+static void song_path(struct as_state *s, const struct sl_entry *e, const char *ext)
+{
+    arr_path(s->path, arr_number(e->book, e->slot), ext);
+}
+
+/* Card task, after the book in the slots was written: the open setlist's songs into memory, the first two into
+ * SL_A and SL_B. Songs of that book come from its slots; the others from their files, through SL_B. 1 when done. */
+static int sl_load(struct as_state *s)
+{
+    unsigned l = s->lists.open, n = s->lists.count[l], start = (unsigned)s->sl_req;
+    s->sl_req = -1;
+    if (!n || start >= n) return 1;
+    int ok = 1;
+    for (unsigned k = 0; k < n; ++k) {
+        s->sl_e[k] = s->lists.e[l][k];
+        if (s->sl_e[k].book == s->book) block_from_slot(s->songs[k], s->sl_e[k].slot);
+    }
+    for (unsigned k = 0; k < n && ok; ++k) {
+        const struct sl_entry *e = &s->sl_e[k];
+        if (e->book == s->book) continue;
+        song_path(s, e, e->book == 0 && s->backup ? "bak" : "work");
+        int r = arr_read(s, SL_B);
+        if (r == 0) clear_arr(SL_B);                          /* never saved: an empty arrangement */
+        if (r < 0) ok = 0;
+        else block_from_slot(s->songs[k], SL_B);
+    }
+    if (!ok) {                                                /* the book as it was; the setlist does not start */
+        read_book(s, s->book, "work");
+        wr8(CHANGED, 0);
+        return 0;
+    }
+    s->sl_n = (uint8_t)n;
+    s->sl_cur = (uint8_t)start;
+    s->sl_cur_slot = SL_A;
+    s->sl_edited = 0;
+    s->song_at[1] = 0xff;
+    put_song(s, 0, start);
+    if (start + 1 < n) put_song(s, 1, start + 1);
+    s->sl_active = 1;
+    s->sl_go = 1;
+    return 1;
+}
+
+/* Card task, ending: songs edited while they played to their own files (read first, so their ARR SAVE copy stays),
+ * then the book back into its slots. 1 when every write and the reread succeeded. */
+static int sl_finish(struct as_state *s)
+{
+    take_back(s, 0);
+    take_back(s, 1);
+    int ok = 1;
+    for (unsigned k = 0; k < s->sl_n; ++k) if (s->sl_edited >> k & 1) {
+        const struct sl_entry *e = &s->sl_e[k];
+        int backup = e->book == 0 && s->book != 0 && s->backup;
+        song_path(s, e, backup ? "bak" : "work");
+        if (arr_read(s, SL_B) < 0) { ok = 0; continue; }     /* missing: written new */
+        block_to_slot(SL_B, s->songs[k]);
+        ok &= arr_write(s, SL_B);
+        if (backup) { song_path(s, e, "work"); ok &= arr_write(s, SL_B); }
+    }
+    s->sl_active = 0;
+    s->sl_end = 0;
+    s->sl_go = 0;
+    ok &= read_book(s, s->book, "work");
+    wr8(CHANGED, 0);
+    wr32(CHAIN, 0xffffffffu);
+    s->redraw = 1;
+    return ok;
+}
+
 /* ---------------------------------------------------------------- the card task */
 /* Stock's arrangement writer, stepped into at its entry (the site's jmp reaches as_writer_entry below). */
 int as_writer(uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4)
 {
     struct as_state *s = ready();
+    if (s->sl_active) {                                   /* slots 7 and 8 hold setlist songs: no book file written */
+        if (s->sl_end) {
+            s->hush = 1;
+            int ok = sl_finish(s);
+            if (ok && s->sl_restart >= 0) { s->sl_req = s->sl_restart; ok = sl_load(s); }
+            s->sl_restart = -1;
+            s->sl_req = -1;
+            if (!ok) s->failed = 1;
+        }
+        write_lists(s);
+        remember(s);
+        return 0;
+    }
+    if (s->sl_req >= 0) s->hush = 1;                      /* our job: its NOW SAFE TO EJECT! is closed after */
     int rc = 0;
     if (s->pending >= 0) s->hush = 1;                     /* our job: its NOW SAFE TO EJECT! is closed after */
     if (s->book == 0) rc = stock_writer(a1, a2, a3, a4);     /* book 1: arr01-08 as always */
@@ -560,6 +686,8 @@ int as_writer(uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4)
     sl_names(s);                                          /* the setlists: names as the book in the slots has them */
     write_lists(s);
     write_place(s);                                       /* where the project is: a load comes back here */
+    if (s->sl_req >= 0 && rc >= 0 && !s->damaged && !sl_load(s)) s->failed = 1;   /* YES on the SETLSTS page */
+    s->sl_req = -1;
     remember(s);
     return rc;
 }
@@ -603,6 +731,8 @@ void as_project_load(void)
      * The book is switched to once stock has finished. */
     for (unsigned b = 0; b < BOOKS; ++b) s->last[b] = 0;
     s->page = 0;                                          /* another project's setlists: the page closes */
+    s->sl_active = 0;                                     /* stock replaces the slots: a setlist playing ends */
+    s->sl_req = -1; s->sl_go = 0; s->sl_end = 0;
     int b = read_place(s);
     read_lists(s);
     s->restore = (int8_t)(b > 0 ? b : -1);
@@ -634,6 +764,7 @@ void as_project_new(void)
     for (unsigned b = 0; b < BOOKS; ++b) s->last[b] = 0;
     sl_clear(s);                                          /* a new project has no setlists */
     s->page = 0;
+    s->sl_active = 0; s->sl_req = -1; s->sl_go = 0; s->sl_end = 0;
 }
 
 /* Stock has read the banks; it reads arr01-08 next, so the slots will hold book 1. Where the project was left is read
@@ -813,7 +944,18 @@ static int page_key(struct as_state *s, int code, int pressed)
         sl_remove(s, l, s->page_cur);
         if (s->page_cur && s->page_cur >= s->lists.count[l]) --s->page_cur;
         break;
-    default: break;                                            /* YES: starting a setlist comes next */
+    case K_YES:                                                /* the setlist from this song */
+        if (!n) break;
+        if (!stopped()) { message("STOP TO START"); break; }
+        if (s->sl_active) { s->sl_end = 1; s->sl_restart = (int8_t)s->page_cur; post_write(); s->page = 0; break; }
+        {
+            s->sl_req = (int8_t)s->page_cur;
+            int rc = post_write();
+            if (rc < 0) { s->sl_req = -1; message(rc == -7 ? "NO PROJECT" : "CARD BUSY"); break; }
+            s->page = 0;
+        }
+        break;
+    default: break;
     }
     if (s->page_cur < s->page_top) s->page_top = s->page_cur;
     if (s->page_cur >= s->page_top + PAGE_ROWS) s->page_top = (uint8_t)(s->page_cur - PAGE_ROWS + 1u);
@@ -916,6 +1058,30 @@ void as_tick(void *api)
             s->mode_on = 0;
             s->quiet = 0;
             if (s->mode_pref && !rd32(ARR_MODE)) arr_mode_on();
+        }
+    }
+    /* A setlist: its first song chosen and the next chained, once loaded; then each time stock has taken the chain
+     * (it moved to the other slot past the last row, and CHAIN went back to -1), the finished song's edits kept and
+     * the song after next put into the freed slot and chained. Opening ARR > CHANGE, stopped, ends it. */
+    if (s->sl_go && s->pending < 0 && select_arr(SL_A) >= 0) {
+        s->sl_go = 0;
+        wr32(CHAIN, s->song_at[1] != 0xff ? SL_B : 0xffffffffu);
+        if (!rd32(ARR_MODE)) arr_mode_on();
+    }
+    if (s->sl_active && !s->sl_go && !s->sl_end) {
+        unsigned next = s->sl_cur_slot == SL_A ? 1u : 0u, next_slot = next ? SL_B : SL_A;
+        if ((rd8(INDEX) & 7u) == next_slot && s->song_at[next] == s->sl_cur + 1u && rd32(CHAIN) == 0xffffffffu) {
+            unsigned done = next ^ 1u;
+            take_back(s, done);
+            s->sl_cur = (uint8_t)(s->sl_cur + 1u);
+            s->sl_cur_slot = (uint8_t)next_slot;
+            unsigned k = s->sl_cur + 1u;
+            if (k < s->sl_n) { put_song(s, done, k); wr32(CHAIN, done ? SL_B : SL_A); }
+            else s->song_at[done] = 0xff;
+        }
+        if (rd32(CHANGE_WINDOW) && stopped() && s->pending < 0) {
+            s->sl_end = 1;
+            if (post_write() < 0) s->sl_end = 0;            /* busy: again next frame */
         }
     }
     if (s->failed) { s->failed = 0; message("BOOK FILE ERROR"); }
