@@ -441,6 +441,14 @@ static int write_changed(struct as_state *s, unsigned book)
 }
 
 /* ---------------------------------------------------------------- setlists */
+/* An entry copied byte by byte: a struct assignment can compile to a call of memcpy, which the module has not got. */
+static void entry_copy(struct sl_entry *to, const struct sl_entry *from)
+{
+    const uint8_t *f = (const uint8_t *)from;
+    uint8_t *t = (uint8_t *)to;
+    for (unsigned i = 0; i < sizeof *to; ++i) t[i] = f[i];
+}
+
 static void sl_clear(struct as_state *s)
 {
     uint8_t *p = (uint8_t *)&s->lists;
@@ -485,9 +493,10 @@ static unsigned sl_move(struct as_state *s, unsigned l, unsigned i, int dir)
 {
     int j = (int)i + dir;
     if (j < 0 || j >= (int)s->lists.count[l]) return i;
-    struct sl_entry t = s->lists.e[l][i];
-    s->lists.e[l][i] = s->lists.e[l][j];
-    s->lists.e[l][j] = t;
+    struct sl_entry t;
+    entry_copy(&t, &s->lists.e[l][i]);
+    entry_copy(&s->lists.e[l][i], &s->lists.e[l][j]);
+    entry_copy(&s->lists.e[l][j], &t);
     s->lists_dirty = 1;
     return (unsigned)j;
 }
@@ -497,7 +506,7 @@ static void sl_remove(struct as_state *s, unsigned l, unsigned i)
 {
     unsigned n = s->lists.count[l];
     if (i >= n) return;
-    for (unsigned k = i; k + 1 < n; ++k) s->lists.e[l][k] = s->lists.e[l][k + 1];
+    for (unsigned k = i; k + 1 < n; ++k) entry_copy(&s->lists.e[l][k], &s->lists.e[l][k + 1]);
     s->lists.count[l] = (uint8_t)(n - 1);
     s->lists_dirty = 1;
 }
@@ -595,7 +604,7 @@ static int sl_load(struct as_state *s)
     if (!n || start >= n) return 1;
     int ok = 1;
     for (unsigned k = 0; k < n; ++k) {
-        s->sl_e[k] = s->lists.e[l][k];
+        entry_copy(&s->sl_e[k], &s->lists.e[l][k]);
         if (s->sl_e[k].book == s->book) block_from_slot(s->songs[k], s->sl_e[k].slot);
     }
     for (unsigned k = 0; k < n && ok; ++k) {
