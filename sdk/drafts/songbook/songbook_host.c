@@ -46,6 +46,9 @@ static uint8_t cs1[0x16200];             /* 0x10000000 .. : the slots, their fla
 static uint8_t rec[20];                  /* 0x100f8f10 */
 static uint8_t misc[0x2000];             /* 0x80004f00 .. */
 static uint32_t change_window, playing, yes_handler;
+static char cur_name[256] = "PROJ", job_name[256] = "PROJ";   /* the project in use; the one a load job loads */
+static uint32_t arr_state;           /* 0x800066a0: the arranger's run state */
+static int resets;
 static uint8_t chosen;               /* 0x100b14d1: the arrangement chosen */
 static uint8_t arr_mode;             /* 0x460d1aec's low byte: arranger mode */
 static uint8_t mode_wanted;          /* 0x80000010: the mode stock applies when a load ends */
@@ -68,6 +71,9 @@ uint8_t host_rd8(uint32_t a)
     if (a >= 0x100f8f10u && a <= 0x100f8f23u) return rec[a - 0x100f8f10u];
     if (a >= 0x400c0b40u && a < 0x400c0b44u) return (uint8_t)(change_window >> (8 * (3 - (a - 0x400c0b40u))));
     if (a >= 0x800065b8u && a < 0x800065bcu) return (uint8_t)(playing >> (8 * (3 - (a - 0x800065b8u))));
+    if (a >= 0x800066a0u && a < 0x800066a4u) return (uint8_t)(arr_state >> (8 * (3 - (a - 0x800066a0u))));
+    if (a >= 0x100f8378u && a < 0x100f8378u + 256u) return (uint8_t)cur_name[a - 0x100f8378u];
+    if (a >= 0x460bdec1u && a < 0x460bdec1u + 256u) return (uint8_t)job_name[a - 0x460bdec1u];
     if (a >= 0x80004f00u && a < 0x80004f00u + sizeof misc) return misc[a - 0x80004f00u];
     if (a == 0x100b14d1u) return chosen;
     if (a == 0x80000005u) return chosen;               /* stock's other copy of the index */
@@ -170,7 +176,8 @@ int host_close_message(void) { msg_up = 0; ++closes; return 0; }
 static int select_busy;                         /* frames stock refuses select_arr (a change of its own pending) */
 static int applies;
 void host_arr_apply(int on) { ++applies; arr_mode = (uint8_t)!!on; }
-int host_select_arr(unsigned n) { if (select_busy) { --select_busy; return -1; } chosen = (uint8_t)n; return 0; }
+int host_select_arr(unsigned n) { if (select_busy) { --select_busy; return -1; } if (arr_state) return -1; chosen = (uint8_t)n; return 0; }
+void host_arr_reset(void) { arr_state = 0; ++resets; }
 /* Stock's writer: each changed slot (or one with no file yet) to arr0N.work. */
 int host_stock_writer(uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4)
 {
@@ -894,14 +901,14 @@ int main(void)
       cs1[W(3) + 5] ^= 1; }
 
     /* LOAD of another project while in a setlist (the developer's MKI, 24 November 2026): stock's project directory
-     * is still the last project's at ev_banks_load and the new one's from ev_banks_loaded */
+     * names the last project at ev_banks_load and at ev_banks_loaded, and the new one only after the whole load */
     change_window = 0x46c7d384u; as_tick(0); job(); change_window = 0; as_tick(0);
     as_setlists_open(); tap(UP); tap(UP); tap(YES); job(); as_tick(0);              /* project A, from the first song */
     stock_chain(); as_tick(0);                        /* song 2 */
     job();                                            /* LOAD's save of project A first */
-    as_project_load();                                /* ev_banks_load: the directory still A's */
-    host_dir = "/SET/PROJB";
-    as_project_loaded(); as_project_new(); mark(0x30); chosen = 0;   /* project B, never used with the module */
+    strcpy(job_name, "PROJB");                        /* LOAD of project B: its job names B */
+    as_project_load(); as_project_loaded(); as_project_new(); mark(0x30); chosen = 0;   /* B, never used */
+    host_dir = "/SET/PROJB"; strcpy(cur_name, "PROJB");   /* the directory names B once the load is over */
     for (int i = 0; i < 400; ++i) as_tick(0);
     job(); for (int i = 0; i < 400; ++i) as_tick(0);   /* the job reading B's book back into slots 7 and 8 */
     check("project B: no setlist started (B has none), nothing chained", chosen == 0 && chain() == 0xffffffffu);
@@ -910,13 +917,16 @@ int main(void)
     job();                                            /* a sync in B */
     check("no file of B gets A's setlists or place", !find("/SET/PROJB/arrlists.work") && !(find("/SET/PROJB/arrbook.work") && find("/SET/PROJB/arrbook.work")->work[22]));
     job();                                            /* LOAD's save of project B */
-    as_project_load();                                /* back to A: the directory still B's */
-    host_dir = "/SET/PROJ";
-    as_project_loaded(); as_project_new(); mark(0x10); chosen = 0;
-    { int pp = posted; for (int i = 0; i < 400; ++i) as_tick(0);
-      check("back in project A: its setlist started again", posted == pp + 1); }
-    job(); as_tick(0);
-    check("on song 2, A's own", chosen == 6 && cs1[W(6) + 100] == s1);
+    strcpy(job_name, "PROJ");                         /* back to A */
+    as_project_load(); as_project_loaded(); as_project_new(); mark(0x10); chosen = 0;
+    host_dir = "/SET/PROJ"; strcpy(cur_name, "PROJ");
+    arr_state = 2;                                    /* the arranger's run state left set after the load */
+    { int pp = posted; for (int i = 0; i < 400; ++i) as_tick(0);   /* the module's job reads A's files */
+      job(); for (int i = 0; i < 400; ++i) as_tick(0);
+      check("back in project A: its setlist started again", posted == pp + 2); }
+    job(); for (int i = 0; i < 60; ++i) as_tick(0);
+    check("on song 2, A's own, the run state reset once", chosen == 6 && cs1[W(6) + 100] == s1 && resets == 1 && arr_state == 0);
+    check("and song 3 chained after the reset", chain() == 7);
 
     /* a project left in a setlist comes back into it after a load, on the song it was on */
     change_window = 0x46c7d384u; as_tick(0); job(); change_window = 0; as_tick(0);
