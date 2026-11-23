@@ -1445,7 +1445,7 @@ void as_tick(void *api)
         /* A project going back into a setlist: its first song is chosen when the setlist starts, so the book's own
          * choice is not made first (the developer's MKI, 24 November 2026: the pattern changed several times while
          * the project came back). */
-        int r = s->reapply && s->resume >= 0 ? 0 : select_arr(s->last[s->book]);
+        int r = s->reapply && (s->resume >= 0 || s->sl_go || s->sl_active) ? 0 : select_arr(s->last[s->book]);
         /* Returning after a LOAD of another project, the arranger's run state can stay set with nothing playing (the
          * developer's MKI, 24 November 2026: the book came back on arrangement 1, every choice refused): once half a
          * second of refusals has passed, stopped, the arranger is reset as stock resets it for each new project, and
@@ -1477,12 +1477,21 @@ void as_tick(void *api)
         else if (stopped()) {
             s->pending = s->restore;
             s->reapply = 1;
+            /* A project left in a setlist: the same job starts it again, after the switch (one card job, not a second
+             * one once the book is back: the developer's MKI, 24 November 2026). */
+            int8_t resume = s->resume;
+            if (resume >= 0 && !s->lists_unread && !s->sl_active && s->resume_cur < s->lists.count[resume]) {
+                s->lists.open = (uint8_t)resume;
+                s->sl_req = (int8_t)s->resume_cur;
+                s->resume = -1;
+            }
             int rc = our_post(s);
             s->restore_rc = (int8_t)rc;
             ev(rc >= 0 ? 7u : 8u);
             if (rc >= 0) { s->restore = -1; s->reloaded_slots = 0; }
             else {
                 s->pending = -1;
+                if (s->resume != resume) { s->resume = resume; s->sl_req = -1; }
                 s->reapply = 0;                          /* stock still busy (a reload reads its samples): again */
                 if (rc == -7 || ++s->restore_ticks > 18000) s->restore = -1;  /* no project, or busy for 5 minutes */
             }

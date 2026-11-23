@@ -1021,6 +1021,22 @@ int main(void)
     { int c0 = closes; job(); msg_up = 1; for (int i = 0; i < 5; ++i) as_tick(0);
       check("restarting a playing setlist from another song: its NOW SAFE TO EJECT! closed", closes == c0 + 1); msg_up = 0; }
 
+    /* A project left in a setlist on a book other than 1: the load's return switches the book and starts the setlist
+     * in one card job (the developer's MKI, 24 November 2026: a second job after the book was back) */
+    { uint32_t y = yes_handler; yes_handler = 0; change_window = 0x46c7d384u; as_tick(0); job();   /* the setlist ended */
+      tap(RIGHT); job(); for (int i = 0; i < 200; ++i) as_tick(0);   /* book 2 */
+      change_window = 0; yes_handler = y; as_tick(0); }
+    as_setlists_open(); tap(UP); tap(UP); tap(YES); job(); for (int i = 0; i < 300; ++i) as_tick(0);   /* from song 1 */
+    stock_chain(); as_tick(0); job();                 /* song 2; a sync writes where the project is */
+    { unsigned bk = book();
+      as_project_load(); as_project_loaded(); as_project_new(); mark(0x10); chosen = 0;
+      int pp = posted; for (int i = 0; i < 700; ++i) as_tick(0);
+      check("left on book 2 in a setlist: one card job brings both back", posted == pp + 1);
+      job(); for (int i = 0; i < 60; ++i) as_tick(0);
+      check("after it: the book back and the setlist on song 2", book() == bk && bk != 0 && chosen == 6 && chain() == 7);
+      for (int i = 0; i < 700; ++i) as_tick(0);
+      check("and no second job", posted == pp + 1); }
+
     printf("%d checks, %d failed\n", checks, failures);
     return failures != 0;
 }
