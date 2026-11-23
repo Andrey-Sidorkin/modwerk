@@ -83,7 +83,7 @@ uint8_t host_rd8(uint32_t a)
     if (a >= 0x460d1e70u && a < 0x460d1e73u) return 0;
     if (a >= 0x400c0ba0u && a < 0x400c0bb0u) return list[a - 0x400c0ba0u];
     if (a >= 0x46c7d8deu + 0x31u * 0x18u && a < 0x46c7d8deu + 0x31u * 0x18u + 4u)   /* YES's routed handler */
-        return (uint8_t)(yes_handler >> (8 * (3 - (a - (0x46c7d8deu + 0x31u * 0x18u)))));
+        return (uint8_t)((yes_handler ? yes_handler : 0x4003395cu) >> (8 * (3 - (a - (0x46c7d8deu + 0x31u * 0x18u)))));   /* 0: the Arranger menu */
     fprintf(stderr, "read of 0x%08x\n", a);
     return 0;
 }
@@ -799,7 +799,7 @@ int main(void)
     { int sw = stock_writes; job();
       check("while it plays, the next save leaves the book's files alone", stock_writes == sw); }
     /* CUE + YES on the main screen: the setlist playing; UP/DOWN the cursor, a further YES the '>' to it, CUE released applies it */
-    change_window = 0x46c7d384u; as_tick(0); job(); change_window = 0; as_tick(0);   /* the last run ended */
+    { uint32_t y = yes_handler; yes_handler = 0; change_window = 0x46c7d384u; as_tick(0); job(); change_window = 0; yes_handler = y; as_tick(0); }   /* ARR > BOOKS opened and closed */   /* the last run ended */
     as_setlists_open(); tap(UP); tap(UP); tap(YES); job(); as_tick(0);              /* again from the first song */
     check("a setlist from the first song: song 2 next", chosen == 6 && chain() == 7 && cs1[W(7) + 100] == s1);
     check("the Arranger menu's title in a setlist: its name kept to 7 characters, the song's 16-letter name cut to 12 instead (26 in all)", !strcmp(as_title_fmt, "STL:SETLIST:%d:%.12s") && as_title_index == 0);
@@ -825,19 +825,19 @@ int main(void)
     check("past the first song the third plays, and it is the last: nothing chained", chosen == 7 && chain() == 0xffffffffu);
     /* the developer's MKI, 23 November 2026: stock put other (empty) arrangements into slots 7 and 8 under a setlist; the
      * arranger then ran through the chain. Nothing of that may be taken back as an edit or written to a song's file. */
-    change_window = 0x46c7d384u; as_tick(0); job(); change_window = 0; as_tick(0);
+    { uint32_t y = yes_handler; yes_handler = 0; change_window = 0x46c7d384u; as_tick(0); job(); change_window = 0; yes_handler = y; as_tick(0); }   /* ARR > BOOKS opened and closed */
     as_setlists_open(); tap(UP); tap(UP); tap(YES); job(); as_tick(0);              /* from the first song */
     { uint8_t f0 = find("/SET/PROJ/arr11.work")->work[100], f1 = find("/SET/PROJ/arr02.work")->work[100], f2 = find("/SET/PROJ/arr05.work")->work[100];
       memset(&cs1[W(6)], 0, BLOCK); memset(&cs1[W(7)], 0, BLOCK);   /* stock reloads the slots: empty arrangements */
       stock_chain(); as_tick(0); stock_chain(); as_tick(0);          /* and runs through the chain */
       int w = writes;
-      change_window = 0x46c7d384u; as_tick(0); job(); change_window = 0; as_tick(0);   /* the setlist ends */
+      { uint32_t y = yes_handler; yes_handler = 0; change_window = 0x46c7d384u; as_tick(0); job(); change_window = 0; yes_handler = y; as_tick(0); }   /* ARR > BOOKS opened and closed */   /* the setlist ends */
       check("slots emptied under a setlist: no song's file written when it ends", find("/SET/PROJ/arr11.work")->work[100] == f0 && find("/SET/PROJ/arr02.work")->work[100] == f1 && find("/SET/PROJ/arr05.work")->work[100] == f2);
       check("only the book read back, nothing written", writes == w); }
 
     /* RELOAD while a setlist plays (ot_emu, 23 November 2026): stock reloads the slots ~10 s later and the arranger runs
      * on; the module must have let go of the setlist, take nothing back and write nothing, then come back into it */
-    change_window = 0x46c7d384u; as_tick(0); job(); change_window = 0; as_tick(0);
+    { uint32_t y = yes_handler; yes_handler = 0; change_window = 0x46c7d384u; as_tick(0); job(); change_window = 0; yes_handler = y; as_tick(0); }   /* ARR > BOOKS opened and closed */
     as_setlists_open(); tap(UP); tap(UP); tap(DOWN); tap(YES); job(); as_tick(0);   /* from song 2 */
     job();                                            /* SAVE's sync: arrbook.work says setlist 1, song 2 */
     as_project_stored();
@@ -854,7 +854,7 @@ int main(void)
       check("song 2 in slot 7 from its file, song 3 chained", chosen == 6 && cs1[W(6) + 100] == s1 && chain() == 7); }
 
     /* a power cycle in a setlist, no sync since it started: it comes back on the song it was on (the record's) */
-    change_window = 0x46c7d384u; as_tick(0); job(); change_window = 0; as_tick(0);
+    { uint32_t y = yes_handler; yes_handler = 0; change_window = 0x46c7d384u; as_tick(0); job(); change_window = 0; yes_handler = y; as_tick(0); }   /* ARR > BOOKS opened and closed */
     as_setlists_open(); tap(UP); tap(UP); tap(YES); job(); as_tick(0);              /* from the first song */
     check("starting a setlist writes it into arrbook.work at once", find("/SET/PROJ/arrbook.work")->work[22] == 0x80);
     stock_chain(); as_tick(0);                        /* song 2 plays; no sync */
@@ -868,7 +868,7 @@ int main(void)
 
     /* the developer's MKI, 23 November 2026: a power cycle in a setlist keeps the setlist's copies in slots 7 and 8
      * (battery RAM) while the fingerprint is stale; the resume's card job must not write them into book 1's arr07/08 */
-    change_window = 0x46c7d384u; as_tick(0); job(); change_window = 0; as_tick(0);
+    { uint32_t y = yes_handler; yes_handler = 0; change_window = 0x46c7d384u; as_tick(0); job(); change_window = 0; yes_handler = y; as_tick(0); }   /* ARR > BOOKS opened and closed */
     { uint8_t a7 = find("/SET/PROJ/arr07.work")->work[100], a8 = find("/SET/PROJ/arr08.work")->work[100];
       as_setlists_open(); tap(UP); tap(UP); tap(YES); job(); as_tick(0);            /* from the first song */
       stock_chain(); as_tick(0);                      /* song 2: slot 7 now holds song 3 */
@@ -883,7 +883,7 @@ int main(void)
 
     /* a power cycle in a setlist where no load hook reaches the module (it comes up after stock's load, as on the
      * developer's MKI): arrbook.work read in the first card job, the setlist back on the song it was on */
-    change_window = 0x46c7d384u; as_tick(0); job(); change_window = 0; as_tick(0);
+    { uint32_t y = yes_handler; yes_handler = 0; change_window = 0x46c7d384u; as_tick(0); job(); change_window = 0; yes_handler = y; as_tick(0); }   /* ARR > BOOKS opened and closed */
     { uint8_t a7 = find("/SET/PROJ/arr07.work")->work[100], a8 = find("/SET/PROJ/arr08.work")->work[100];
       as_setlists_open(); tap(UP); tap(UP); tap(YES); job(); as_tick(0);            /* from the first song */
       stock_chain(); as_tick(0);                      /* song 2 */
@@ -900,9 +900,31 @@ int main(void)
       check("on song 2, the song it was on", chosen == 6 && cs1[W(6) + 100] == s1 && chain() == 7);
       cs1[W(3) + 5] ^= 1; }
 
+    /* Another screen in front of the Arranger menu (the PROJECT menu: its own YES): the page closes, and the BOOKS
+     * list's LEFT/RIGHT, labels and CUE + YES are stock's (the developer's MKI, 24 November 2026) */
+    uint32_t yes_was = yes_handler; yes_handler = 0;  /* the Arranger menu in front */
+    as_setlists_open(); as_tick(0);
+    check("the page stays open over the Arranger menu", (page_draw(), ntexts > 0));
+    yes_handler = 0x400650a0u; as_tick(0);
+    check("the PROJECT menu in front closes it", (page_draw(), ntexts == 0));
+    change_window = 0x46c7d384u;
+    { unsigned b0 = book(); check("LEFT/RIGHT under the PROJECT menu are stock's", as_key(RIGHT, 1) == 0 && as_key(RIGHT, 0) == 0 && book() == b0); }
+    yes_handler = 0; change_window = 0; as_tick(0);
+    /* FUNC + YES's name editor takes every key: a CUE released in it is not left held */
+    as_setlists_open(); as_key(CUE, 1); as_key(FUNC, 1); tap(YES);
+    memcpy(named, "LIST 1         ", 16); named[15] = 0; as_list_named(1); job();
+    as_setlists_open(); { unsigned char e0[64]; memcpy(e0, entry(0, 0), 32); memcpy(e0 + 32, entry(0, 1), 32);
+      page_draw(); char t0[24]; strcpy(t0, text_at(4));
+      tap(RIGHT); page_draw();
+      check("after the editor, RIGHT switches setlists", strcmp(text_at(4), t0) != 0);
+      tap(LEFT); page_draw();
+      check("LEFT back, nothing moved", !strcmp(text_at(4), t0) && !memcmp(e0, entry(0, 0), 32) && !memcmp(e0 + 32, entry(0, 1), 32)); }
+    tap(NO); as_tick(0);
+    yes_handler = yes_was;
+
     /* LOAD of another project while in a setlist (the developer's MKI, 24 November 2026): stock's project directory
      * names the last project at ev_banks_load and at ev_banks_loaded, and the new one only after the whole load */
-    change_window = 0x46c7d384u; as_tick(0); job(); change_window = 0; as_tick(0);
+    { uint32_t y = yes_handler; yes_handler = 0; change_window = 0x46c7d384u; as_tick(0); job(); change_window = 0; yes_handler = y; as_tick(0); }   /* ARR > BOOKS opened and closed */
     as_setlists_open(); tap(UP); tap(UP); tap(YES); job(); as_tick(0);              /* project A, from the first song */
     stock_chain(); as_tick(0);                        /* song 2 */
     job();                                            /* LOAD's save of project A first */
@@ -929,7 +951,7 @@ int main(void)
     check("and song 3 chained after the reset", chain() == 7);
 
     /* a project left in a setlist comes back into it after a load, on the song it was on */
-    change_window = 0x46c7d384u; as_tick(0); job(); change_window = 0; as_tick(0);
+    { uint32_t y = yes_handler; yes_handler = 0; change_window = 0x46c7d384u; as_tick(0); job(); change_window = 0; yes_handler = y; as_tick(0); }   /* ARR > BOOKS opened and closed */
     as_setlists_open(); tap(UP); tap(UP); tap(YES); job(); as_tick(0);              /* from the first song */
     stock_chain(); as_tick(0); job();                 /* song 2 plays; a sync writes where the project is */
     check("arrbook.work says: setlist 1, song 2", find("/SET/PROJ/arrbook.work")->work[22] == 0x80 && find("/SET/PROJ/arrbook.work")->work[23] == 1);
@@ -938,20 +960,20 @@ int main(void)
       check("after the load, once it is over, the setlist is started again", posted == pp + 1); }
     job(); as_tick(0);
     check("on song 2: it in slot 7, chosen, song 3 chained", chosen == 6 && cs1[W(6) + 100] == s1 && chain() == 7 && cs1[W(7) + 100] == s2);
-    change_window = 0x46c7d384u; as_tick(0); job(); change_window = 0; as_tick(0);
+    { uint32_t y = yes_handler; yes_handler = 0; change_window = 0x46c7d384u; as_tick(0); job(); change_window = 0; yes_handler = y; as_tick(0); }   /* ARR > BOOKS opened and closed */
     check("ended, arrbook.work says no setlist", find("/SET/PROJ/arrbook.work")->work[22] == 0);
     { int pp = posted; as_project_load(); as_project_new(); mark(0x10); as_project_loaded();
       for (int i = 0; i < 400; ++i) as_tick(0);
       check("a load of a project left outside a setlist starts none", posted == pp); }
     /* the window open across a song change: the * and the > follow, unless a song was chosen with YES */
-    change_window = 0x46c7d384u; as_tick(0); job(); change_window = 0; as_tick(0);
+    { uint32_t y = yes_handler; yes_handler = 0; change_window = 0x46c7d384u; as_tick(0); job(); change_window = 0; yes_handler = y; as_tick(0); }   /* ARR > BOOKS opened and closed */
     as_setlists_open(); tap(UP); tap(UP); tap(YES); job(); as_tick(0);              /* from the first song */
     as_key(CUE, 1); tap(YES);                         /* open, nothing chosen */
     stock_chain(); as_tick(0); page_draw();           /* song 2 starts while it is open */
     check("open across a song change: the playing mark on song 2, > on song 3", text_at(19)[0] == ' ' && lit(27, 21) && text_at(26)[0] == '>' && text_at(12)[0] == ' ' && !strcmp(texts[1].t, "2/3"));
     as_key(CUE, 0);
     check("released with nothing chosen: song 3 stays next", chain() == 6 && cs1[W(6) + 100] == s2);
-    change_window = 0x46c7d384u; as_tick(0); job(); change_window = 0; as_tick(0);
+    { uint32_t y = yes_handler; yes_handler = 0; change_window = 0x46c7d384u; as_tick(0); job(); change_window = 0; yes_handler = y; as_tick(0); }   /* ARR > BOOKS opened and closed */
     as_setlists_open(); tap(UP); tap(UP); tap(YES); job(); as_tick(0);              /* from the first song again */
     as_key(CUE, 1); tap(YES); tap(DOWN); tap(DOWN); tap(YES);   /* song 3 chosen to follow song 1 */
     stock_chain(); as_tick(0); page_draw();           /* but song 2 starts before CUE is released */
