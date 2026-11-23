@@ -598,7 +598,8 @@ char as_chain_text[16];
 
 /* The Arranger menu's title (stock: "ARR %d:%s" of its index + 1 and the name, 0x40057f1c): manifest.py's SymbolRefs
  * point its index byte and its format here. A single arrangement: "ARR 2:3:NAME" (book, arrangement, name). A setlist:
- * "STL:GIG IN:2:NAME" (its name, cut as far as the song's name needs the room; the song's place; its name). At most
+ * "STL:GIG IN:2:NAME" (its name, cut as far as the song's name needs the room but never under 7 characters, then the
+ * song's name cut instead; the song's place; its name). At most
  * TITLE_MAX characters, the width of the menu's title bar. A % in a name becomes a space: this is a format. */
 #define TITLE_MAX 26u
 uint8_t as_title_index;
@@ -619,12 +620,21 @@ static void title_follow(const struct as_state *s)
         char name[16], *e = list_title(s, name, s->sl_list);
         unsigned k = (unsigned)(e - name);
         if (k > 15u) k = 15u;
-        while (k > room) --k;
+        unsigned keep = k < 7u ? k : 7u;                  /* the setlist's name keeps at least 7 characters */
+        while (k > room && k > keep) --k;
         while (k && name[k - 1] == ' ') --k;
         t = put_text(t, "STL:");
         for (unsigned i = 0; i < k; ++i) *t++ = name[i] == '%' ? ' ' : name[i];
         if (k) *t++ = ':';
         as_title_index = s->sl_cur;
+        if (k > room) {                                   /* then the song's name is cut: "%.Ns" */
+            unsigned fit = song - (k - room);
+            t = put_text(t, "%d:%.");
+            t = put_num(t, fit);
+            t = put_text(t, "s");
+            *t = 0;
+            return;
+        }
     }
     t = put_text(t, "%d:%s");
     *t = 0;

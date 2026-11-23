@@ -794,7 +794,7 @@ int main(void)
     change_window = 0x46c7d384u; as_tick(0); job(); change_window = 0; as_tick(0);   /* the last run ended */
     as_setlists_open(); tap(UP); tap(UP); tap(YES); job(); as_tick(0);              /* again from the first song */
     check("a setlist from the first song: song 2 next", chosen == 6 && chain() == 7 && cs1[W(7) + 100] == s1);
-    check("the Arranger menu's title in a setlist: STL, its name cut to the room the song's 16-letter name leaves, the place", !strcmp(as_title_fmt, "STL:SET:%d:%s") && as_title_index == 0);
+    check("the Arranger menu's title in a setlist: its name kept to 7 characters, the song's 16-letter name cut to 12 instead (26 in all)", !strcmp(as_title_fmt, "STL:SETLIST:%d:%.12s") && as_title_index == 0);
     yes_handler = 0x40058f34u;                       /* the editor's: not the main screen */
     as_key(CUE, 1);
     check("CUE + YES in the editor is not the setlist's", tap(YES) == 0);
