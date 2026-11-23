@@ -676,7 +676,10 @@ int main(void)
     check("the setlist: B2 3, B1 2, B1 5", book() == 0 && lists_count(0) == 3 && entry(0, 0)[0] == 1 && entry(0, 0)[1] == 2 && entry(0, 2)[1] == 4);
     uint8_t s0 = find("/SET/PROJ/arr11.work")->work[100], s1 = cs1[W(1) + 100], s2 = cs1[W(4) + 100], b7 = cs1[W(6) + 100], b8 = cs1[W(7) + 100];
     uint8_t saved2 = find("/SET/PROJ/arr02.work")->saved[100];
-    playing = 1; as_setlists_open(); tap(YES);
+    chosen = 4; as_setlists_open(); page_draw();
+    check("the page opened stopped: the cursor on the arrangement chosen now (B1 5, the third song)", lit(100, 25) && !lit(100, 11));
+    tap(NO); chosen = 0;
+    playing = 1; as_setlists_open(); tap(UP); tap(UP); tap(YES);
     check("YES while playing: it says so and starts nothing", !strcmp(last_message, "STOP TO START") && (page_draw(), ntexts > 0));
     playing = 0;
     int pp = posted; tap(YES);
@@ -687,6 +690,9 @@ int main(void)
     check("the first song chosen, the second chained, arranger mode on", chosen == 6 && chain() == 7 && arr_mode == 1);
     stock_chain(); as_tick(0);
     check("past the first song: the third into the freed slot 7, chained", chosen == 7 && cs1[W(6) + 100] == s2 && chain() == 6);
+    as_setlists_open(); page_draw();
+    check("the page opened while it plays: the cursor on the song playing (the second)", lit(100, 18) && !lit(100, 11));
+    tap(NO);
     memset(&misc[0x80006694u - 0x80004f00u], 0xff, 4); as_tick(0);   /* something clears the chain mid-song */
     { int r0 = redraws;
       memset(&misc[0x80006694u - 0x80004f00u], 0xff, 4); as_tick(0);

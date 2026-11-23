@@ -164,6 +164,7 @@ struct as_state {
     uint8_t sl_end;          /* ending: the card job writes edited songs back and reads the book again */
     int8_t sl_restart;       /* YES on the page while one plays: after ending, start again from this song; -1 none */
     uint8_t sl_n, sl_cur;    /* its songs, and the one playing (or chosen) */
+    uint8_t sl_list;         /* the setlist playing (0 = 1) */
     uint8_t sl_cur_slot;     /* the slot that song is in (SL_A or SL_B) */
     uint8_t song_at[2];      /* the song in SL_A, SL_B; 0xff none */
     uint16_t sl_edited;      /* songs changed while they played: written to their own files at the end */
@@ -607,6 +608,7 @@ static int sl_load(struct as_state *s)
         return 0;
     }
     s->sl_n = (uint8_t)n;
+    s->sl_list = (uint8_t)l;
     s->sl_cur = (uint8_t)start;
     s->sl_cur_slot = SL_A;
     s->sl_edited = 0;
@@ -928,6 +930,8 @@ static void move_arr(struct as_state *s, int dir)
     draw_change();
 }
 
+#define PAGE_ROWS 7u
+
 /* The Arranger menu's fourth item (CHAIN in stock): its YES opens the SETLSTS page (manifest.py's SymbolRef). */
 void as_setlists_open(void)
 {
@@ -935,9 +939,14 @@ void as_setlists_open(void)
     s->page = 1;
     s->page_cur = 0;
     s->page_top = 0;
+    /* The cursor on the song playing, or else on the arrangement chosen now, when the setlist holds it. */
+    unsigned l = s->lists.open, n = s->lists.count[l];
+    if (s->sl_active && s->sl_list == l && s->sl_cur < n) s->page_cur = s->sl_cur;
+    else for (unsigned i = 0; i < n; ++i)
+        if (s->lists.e[l][i].book == s->book && s->lists.e[l][i].slot == (rd8(INDEX) & 7u)) { s->page_cur = (uint8_t)i; break; }
+    if (s->page_cur >= PAGE_ROWS) s->page_top = (uint8_t)(s->page_cur - PAGE_ROWS + 1u);
 }
 
-#define PAGE_ROWS 7u
 
 /* Keys while the SETLSTS page is open: all but the transport, FUNC and CUE are the page's. */
 static int page_key(struct as_state *s, int code, int pressed)
