@@ -797,6 +797,21 @@ int main(void)
     check("releasing CUE closes it and puts the third song next, chained", ntexts == 0 && cs1[W(7) + 100] == s2 && chain() == 7);
     stock_chain(); as_tick(0);
     check("past the first song the third plays, and it is the last: nothing chained", chosen == 7 && chain() == 0xffffffffu);
+    /* the window open across a song change: the * and the > follow, unless a song was chosen with YES */
+    change_window = 0x46c7d384u; as_tick(0); job(); change_window = 0; as_tick(0);
+    as_setlists_open(); tap(UP); tap(UP); tap(YES); job(); as_tick(0);              /* from the first song */
+    as_key(CUE, 1); tap(YES);                         /* open, nothing chosen */
+    stock_chain(); as_tick(0); page_draw();           /* song 2 starts while it is open */
+    check("open across a song change: * on song 2, > on song 3", text_at(19)[0] == '*' && text_at(26)[0] == '>' && text_at(12)[0] == ' ' && !strcmp(texts[1].t, "2/3"));
+    as_key(CUE, 0);
+    check("released with nothing chosen: song 3 stays next", chain() == 6 && cs1[W(6) + 100] == s2);
+    change_window = 0x46c7d384u; as_tick(0); job(); change_window = 0; as_tick(0);
+    as_setlists_open(); tap(UP); tap(UP); tap(YES); job(); as_tick(0);              /* from the first song again */
+    as_key(CUE, 1); tap(YES); tap(DOWN); tap(DOWN); tap(YES);   /* song 3 chosen to follow song 1 */
+    stock_chain(); as_tick(0); page_draw();           /* but song 2 starts before CUE is released */
+    check("a chosen song stays marked through the change", text_at(26)[0] == '>' && text_at(19)[0] == '*');
+    as_key(CUE, 0);
+    check("and follows the song now playing when CUE is released", chain() == 6 && cs1[W(6) + 100] == s2);
     yes_handler = 0;
 
     as_project_load(); as_project_new(); mark(0x10); as_tick(0);
