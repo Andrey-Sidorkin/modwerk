@@ -1,5 +1,16 @@
 [
   {
+    "version": "0.2.0-experimental",
+    "date": "2026-11-24",
+    "changes": [
+      "16 setlists of up to 16 songs from any book, played one after the other without a gap.",
+      "SETLSTS in the arranger menu: start, reorder, copy, paste and name setlists; CUE + YES in BOOKS adds a song.",
+      "While a setlist plays, the main screen shows it, and CUE + YES lets you pick the next song.",
+      "A project comes back into its setlist after LOAD, RELOAD or a power cycle.",
+      "The arranger menu's CHANGE reads BOOKS; its title shows the book and the arrangement."
+    ]
+  },
+  {
     "version": "0.1.0-experimental",
     "date": "2026-11-18",
     "changes": [

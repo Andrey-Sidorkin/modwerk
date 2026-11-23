@@ -1,7 +1,7 @@
 # Songbook
 
-128 arrangements per project, as 16 books of 8, every one an ordinary stock arrangement file. Setlists of up to 16
-songs from any book follow in a later version. OS 1.40C, MKI and MKII.
+128 arrangements per project, as 16 books of 8, every one an ordinary stock arrangement file, and 16 setlists of up to
+16 songs from any book, played one after the other without a gap. OS 1.40C, MKI and MKII.
 
 ## Overview
 
@@ -15,6 +15,11 @@ The Octatrack's own code writes and reads every one of these files, so they are 
 byte. A project saved with the module opens on a unit without it with book 1 as it was, and an arrangement from a
 later book can be moved into book 1 on a computer by renaming its file (`arr37.work` to `arr03.work`, say).
 
+A setlist plays songs from any book in a chosen order. Songbook keeps its songs in memory and plays them through
+two of the open book's arrangement slots, 7 and 8, chaining each to the next with stock's own CHAIN, so each song
+follows the last without a gap. While a setlist plays, the main screen shows it: the setlist's name in the Part box,
+the song's place (`|≡ 2/6`) under it, and the next song's name after the playing song's last row.
+
 ## Controls
 
 | Where | Keys | What it does |
@@ -22,6 +27,20 @@ later book can be moved into book 1 on a computer by renaming its file (`arr37.w
 | ARR > CHANGE, stopped | RIGHT | Write the current book to the card, then load the next one (up to 16) |
 | ARR > CHANGE, stopped | LEFT | The same, to the book before (down to 1) |
 | ARR > CHANGE, playing | LEFT / RIGHT | Nothing changes; it says STOP TO CHANGE BOOK |
+| ARR > BOOKS (stock's CHANGE, renamed) | CUE + YES | Add the arrangement under the cursor to the end of the open setlist (B2 5 ADDED TO LIST 3) |
+| ARR > BOOKS, stopped | CUE + LEFT / RIGHT | Move the arrangement under the cursor one place up or down in its book |
+| Arranger menu | SETLSTS (stock's CHAIN, replaced) | Open the setlists page |
+| SETLSTS page | LEFT / RIGHT | The setlist before or after (1 to 16) |
+| SETLSTS page | UP / DOWN | Move the cursor |
+| SETLSTS page, stopped | YES | Start the setlist from the song under the cursor (PLAY then plays it) |
+| SETLSTS page | CUE + LEFT / RIGHT | Move the song under the cursor up or down |
+| SETLSTS page | FUNC + PLAY | Take the song out of the setlist (the arrangement stays in its book) |
+| SETLSTS page | FUNC + REC / CUE + FUNC + REC | Copy the song / the whole setlist |
+| SETLSTS page | FUNC + STOP | Paste after the cursor |
+| SETLSTS page | FUNC + YES | Name the setlist (stock's name editor, 15 characters) |
+| SETLSTS page | NO | Close it |
+| Main screen, a setlist playing | hold CUE, press YES | Show the setlist: the playing song ▶, the next one >; UP/DOWN move the cursor, YES makes the song under it the next one at once; releasing CUE closes it |
+| ARR > BOOKS, stopped | (opening it) | Ends a setlist: songs edited while it played are written to their own files, the book comes back |
 
 A book never used starts as 8 empty arrangements. Each book comes back on the arrangement you last chose in it (a
 book not visited yet on arrangement 1), with the list's cursor on it; after a power cycle or a project load every book
@@ -33,10 +52,20 @@ unless you edit that arrangement.
 ## Usage
 
 1. Stop the transport.
-2. Open ARR > CHANGE. MKII: ARR, then CHANGE. MKI: FUNC + PATTERN switches arrangement mode on, FUNC + BANK opens the
-   arranger menu, then CHANGE.
+2. Open ARR > BOOKS (stock's CHANGE). MKII: ARR, then BOOKS. MKI: FUNC + PATTERN switches arrangement mode on, FUNC +
+   BANK opens the arranger menu, then BOOKS.
 3. Press RIGHT or LEFT. The label at the top right shows the book, for example BOOK 3.
 4. Choose one of its 8 arrangements as usual.
+
+### Setlists
+
+1. In ARR > BOOKS, put the cursor on an arrangement and press CUE + YES: it is added to the open setlist (LIST 1 at
+   the bottom right). Add songs from any book this way.
+2. Open SETLSTS in the arranger menu: the setlist, its songs as `book.arrangement NAME`. Move them with CUE +
+   LEFT/RIGHT, name the setlist with FUNC + YES.
+3. Put the cursor on the first song, press YES, close the menu with NO, and press PLAY. Each song is followed by the
+   next; the last ends as any arrangement ends.
+4. Opening ARR > BOOKS (stopped) ends the setlist and brings the book back.
 
 ### Quick tutorial
 
@@ -48,10 +77,30 @@ unless you edit that arrangement.
 
 ## Compatibility and limitations
 
+- **Setlists borrow the open book's arrangements 7 and 8.** While a setlist is active, slots 7 and 8 hold copies of
+  setlist songs; nothing of them is written to the book's files, and the book's own arrangements 7 and 8 come back from
+  their files when the setlist ends, after a load, a reload or a power cycle (the battery record keeps the setlist's
+  state). **End a setlist (open ARR > BOOKS) before removing the module**: without the module, stock's next save would
+  write those copies into the book's arrangements 7 and 8.
+- **Edits during a show** are written to each song's own file when the setlist ends (opening ARR > BOOKS, stopped).
+  A RELOAD or a power cycle drops edits not yet written, as stock does for unsaved changes. A song renamed while a
+  setlist plays keeps its old name.
+- **A project comes back into its setlist.** LOAD and RELOAD PROJECT return to the setlist and song saved with the
+  project, a power cycle to the song playing. Without the module the project opens on book 1.
+- **Changes to stock flows (only while the module is installed):** the arranger menu reads BOOKS for CHANGE and
+  SETLSTS for CHAIN (CHAIN itself is replaced: a two-song setlist does its job, across books too); the menu's title
+  reads `ARR B2:3:NAME` (book, arrangement, name) or, in a setlist, `STL:<setlist>:<song no>:<song name>`; the
+  arranger rows' chain line reads `>` and the next song's name; while a setlist plays, the main screen's Part box and
+  pattern line show the setlist instead of the Part and the pattern. CUE + YES on the main screen is taken only while a
+  setlist plays (stock does nothing with it there).
+
 - **Takes:** LEFT and RIGHT in ARR > CHANGE (stock does nothing with them there), the top right corner of that list
   for the label, and stock's arrangement writer, which it steps into at its entry: on book 1 stock writes arr01 to
-  arr08 exactly as always, on another book that book's 8 files are written instead. No other module or base hook uses
-  that site (`npm run modules:compat`).
+  arr08 exactly as always, on another book that book's 8 files are written instead. For setlists: the arranger menu's
+  CHANGE and CHAIN entries (their names, CHAIN's routine and icon), the operands of the menu title's index and format
+  and of the arranger rows' chain line (pointed at the module's own text; stock's strings stay untouched), CUE + YES
+  and CUE + LEFT/RIGHT in ARR > BOOKS, and CUE + YES on the main screen while a setlist plays. No other module or base
+  hook uses these sites (`npm run modules:compat`).
 - **A change to a stock flow: LOAD PROJECT and arranger mode.** Stock's LOAD (PROJECT > CHANGE) opens a project in
   pattern mode, while RELOAD keeps the mode. With the module, a project that was left (switched, synced or saved) in
   arranger mode opens in arranger mode again, after its book and arrangement are restored; one left in pattern mode
@@ -74,7 +123,9 @@ unless you edit that arrangement.
 - **Saved with the project.** SAVE PROJECT copies arr09 to arr128 to their `.strd` copies as stock does for arr01 to
   arr08, and RELOAD PROJECT copies them back. Stock's own project copy functions copy book 1 only; copying the project
   folder copies every book.
-- **Battery RAM:** 16 bytes at 0x100f8f10 (sdk/machines/octatrack/battery-ram.json) remember which book the slots hold.
+- **Battery RAM:** 20 bytes at 0x100f8f10 (sdk/machines/octatrack/battery-ram.json) remember which book the slots
+  hold, whether it was read in full, and whether slots 7 and 8 hold a setlist's songs (and which song plays).
+- **Memory:** about 98 KB, most of it the setlist's songs (16 arrangements).
 
 ## Tests and measurements
 

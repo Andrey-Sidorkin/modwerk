@@ -1,4 +1,4 @@
-"""SONGBOOK -- 128 arrangements per project, as 16 books of 8 (setlists follow in a later version).
+"""SONGBOOK -- 128 arrangements per project, as 16 books of 8, and 16 setlists of up to 16 songs.
 
 Book 1 is stock's arr01-arr08; book 2 is arr09-arr16, and so on to book 16, arr121-arr128: ordinary stock
 arrangement files in the project directory, written and read by stock's own routines. In ARR > CHANGE, stopped,
@@ -36,8 +36,8 @@ MODULE = Module(
     author="Andrey-Sidorkin",
     author_url="https://github.com/Andrey-Sidorkin",
     proof=Proof.UNTESTED,
-    proof_note="Host gate (89 checks); the developer's MKI checks, last on build b976e98ff (base 0.7.13, the test procedure and the owner's reinstall and Undo checks); the book 1 fix since is host-tested only.",
-    doc="128 arrangements per project as 16 books of 8, all stock arrangement files: arr01-arr08 stay book 1.",
+    proof_note="Host gate (218 checks); the developer's MKI checks: books on build b976e98ff, setlists on build 7a53e26af (base 0.7.13).",
+    doc="128 arrangements as 16 books of 8 (arr01-arr08 stay book 1), and 16 setlists of up to 16 songs from any book, played gapless.",
     linked=(Linked("songbook", os.path.join(_HERE, "songbook_core.s")),),
     detours=(Detour(WRITER, stock_guard(WRITER, 8, "b692e058a2f3049810c18b0571d61c085c3daba589a09b531fed42f528b96012"),
                     "songbook", "as_writer_entry",

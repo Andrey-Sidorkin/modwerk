@@ -1,12 +1,13 @@
 # Songbook testing
 
-Version 0.1.0-experimental, called Arr Setlists until 22 November 2026. Host gate, emulator runs and the developer's own tests on their MKI (flashed base
+Version 0.2.0-experimental (setlists; section "Setlists (0.2.0)" below) on 0.1.0-experimental (books), called Arr
+Setlists until 22 November 2026. Host gate, emulator runs and the developer's own tests on their MKI (flashed base
 `6c189889…`), each on the named build below; the last build tested on the unit is package `37f7e94f…` (source
 `b976e98ff`), on base 0.7.13, 23 November 2026 (the test procedure below); the book 1 fix after it is host-tested only.
 
 ## Host gate
 
-`verify.py`: 89 checks of songbook.c against simulated battery RAM and simulated stock file routines: switching
+`verify.py`: 218 checks of songbook.c (89 for the books of 0.1.0) against simulated battery RAM and simulated stock file routines: switching
 both ways, arr09-arr128 named and written 8 at a time, book 1's backup and arr01-08 repaired on return, a file that
 will not read never written back, refusals (playing, card busy, no project), reinstall and power-cycle detection by
 the battery record, SAVE and RELOAD PROJECT, returning to where a project was left (in stock's order of hooks and its two
@@ -176,6 +177,45 @@ empty slots over arr01-08. Fixed: book 1 read only in part is written as books 2
 model now writes as stock does; `verify.py` (89 checks) adds the sync on a partly read book 1, which the previous code
 fails (with the corrected model, three checks). Host-tested only.
 
+## Setlists (0.2.0)
+
+Host gate: `verify.py`, 218 checks; the setlist part plays through a simulated CHAIN (stock taking it past a song's
+last row), the end on END OF ARR, edits during a show, copy and paste, names and the old file format, the main-screen
+and title displays, the CUE + YES window, and every path that can touch slots 7 and 8.
+
+Emulator (ot_emu, adapted, the beta base, MKI panel, 23 November 2026), screenshots by the panel link: SETLSTS fits its
+menu cell; the page, the window, the add message, the LIST box, the Part-box display and the menu titles drawn in
+stock's font where intended; "SETLSTS" and "BOOKS" in the menu, the list icon. The emulator's sequencer does not advance
+after PLAY (stock pattern mode neither), so no song change could be seen there. The busy refusal and the RELOAD loss
+below were reproduced there and their fixes checked there.
+
+On the developer's MKI (OS 1.40C, base 0.7.13, kept beside USB AUDIO and Arr Rows 0.2.0, a scratch project), as the
+developer reported it, 23-24 November 2026, the last build `1d576a3e…` (source `7a53e26af`): a setlist of three songs
+plays through with each song following the last, the last ending on END OF ARR; the window chooses the next song at
+once with YES and follows a song change; copy and paste of songs and setlists; names; the Part-box display, the menu
+titles and the playing mark; an edit made during a show (row 000 set to A16 in song 2) is in that song's book after
+the setlist ends; RELOAD and a power cycle in a setlist come back into it on the song it was on, songs intact.
+Not run: LOAD of another project and back during a setlist (host-tested); an MKII.
+
+### Faults found on the unit and fixed
+
+- **Installs refused as busy until a power cycle** (`7f2c9fb4` and later): the module wrote the next song's name into
+  the bytes of its own declared poke; the loader's check of declared bytes then failed every later switch (refusal 5).
+  Reproduced in ot_emu (starting a setlist, then an install). Fixed in `a5d48552c`: the chain line's operands point at
+  the module's own text. Installs after a setlist went through on the unit from then on.
+- **Tempo, MIDI channel and bank numbers blank** (`88922349` to `c4e6b541`): the chain-text poke covered stock's shared
+  `"%d"`. Fixed in `d3a8ace28`, then replaced by the operands above.
+- **Data loss on RELOAD in a setlist** (`3382ca4f`): the reload hooks did not end the setlist in memory; stock refilled
+  slots 7 and 8 with book 1's (empty) arrangements 7 and 8, and the module took them back as edits of songs 2-8 and
+  wrote them when the setlist ended. Reproduced in ot_emu. Fixed in `a542bc4d4`: every load, reload and new project lets
+  go of a setlist, and a slot no longer holding its song (name changed or rows gone) is never taken back.
+- **Data loss on a power cycle in a setlist** (`26f14530`): slots 7 and 8 kept the setlist's copies (battery RAM) with
+  a stale fingerprint; the module took them for book 1 and the resume's card job wrote them into arr07/arr08. Fixed in
+  `5a67c187b`: the battery record alone says the slots hold setlist songs, and while it does and no setlist plays, a
+  card job reads the book back first and writes none of it. The host test fails on the faulty code.
+- **No resume after a power cycle** (`dc591db7`): the module comes up after stock's project load, so no load hook told
+  it; fixed in `065d1bd20` (the first card job reads arrbook.work).
+
 ## Edge cases
 
 | Case | Why this change makes it a risk | How run | Result |
@@ -196,6 +236,13 @@ fails (with the corrected model, three checks). Host-tested only.
 | Removing the module on a book other than 1 | stock would write that book into arr01-08 | README asks to step back to book 1 first | not run: documented limitation |
 | A book file that does not read | must not be written back | host test (verify.py) | not run on a unit |
 | A new project (ev_project_new outside a load) | must reset the books, not keep a load's return | host test (verify.py) | not run on a unit |
+| A setlist's songs in the open book's arrangements 7 and 8 | the setlist borrows those slots | the developer's MKI (songs at 1:6, 1:7, 1:8), `214efe0e`/`1d576a3e` | pass: intact through a power cycle (lost on `26f14530`, fixed) |
+| RELOAD during a setlist | stock refills slots 7 and 8 ~10 s into the reload | ot_emu reproduction; host test; the developer's MKI | pass on `fbb53513` and later (lost on `3382ca4f`, fixed) |
+| Power cycle during a setlist | the slots keep the copies; no load hook reaches the module | host test (both); the developer's MKI | pass on `214efe0e`: back on song 2, songs intact |
+| LOAD another project and back during a setlist | stock replaces the slots | host test | pass in the host test; not run on a unit |
+| An install while a setlist plays | fresh module memory, slots 7 and 8 not the book's | host test | pass in the host test; on the unit the install after each test ran without loss |
+| An empty song in a setlist | stock takes the chain at once when it starts an empty arrangement | host test (slots emptied) | pass in the host test |
+| Removing the module during a setlist | stock would save the copies into arrangements 7 and 8 | README asks to end the setlist first | not run: documented limitation |
 | MKII | another panel and key layout | none | not run: no MKII |
 | device:test / device:qualify lifecycle | install, Keep, Undo, removal on the scripted path | none | not run: the development base's RAM boot broke off over USB (18 and 23 November 2026); install, Keep and a trial + Undo were run by hand on the flashed base |
 

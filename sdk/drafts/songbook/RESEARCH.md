@@ -77,3 +77,38 @@ pending switch then backs up book 1 when leaving it and reads the next book's fi
 backup and marks all 8 changed, so stock's next write repairs arr01-08. A file that does not read leaves its slot
 empty and is never written back unless that arrangement is edited. Which book the slots hold survives a reinstall in
 the battery record, valid only while a fingerprint of the slots still matches; a project load always means book 1.
+
+## Setlists (0.2.0)
+
+- **CHAIN:** stock's chain target is `0x80006694` (-1 none, taken once). The arranger step takes it past an
+  arrangement's last row (`0x4004a7e2`): index (`0x80000005`, `0x100b14d1`) and pointer (`0x10000000`) to that slot, row
+  0, playing on; the start routine (`0x400a0230`) takes it when it starts an arrangement with no rows. Past the last row
+  with no chain the arranger ends (`0x4004a75e`). Playing a setlist is a chain from slot 7 to 8 and back, the module
+  putting the song after next into the freed slot; stock clears the chain only when taking it, but the module sets it
+  again every frame.
+- **The arranger menu:** descriptor `0x400be7e6` (2 rows of 4), entries of 16 bytes `{name[8], icon, routine}` from
+  `0x400be766`: CHANGE `0x400be786` (routine `0x40058abc`), CHAIN `0x400be796` (icon `0x400be5c2`, routine
+  `0x40058b38`). Names are drawn with `%s` (`0x400488c4`), so 7 letters at most; an icon is two pictures of
+  `{27, 13, 1, image, mask}`, 27 columns of a word each, the top row in bit 31.
+- **The menu title** is `sprintf("ARR %d:%s", index + 1, name)` at `0x40057f1c`: the index from `0x80000005`
+  (operand at `0x40057f48`), the format `0x400b47e6` (operand at `0x40057f54`).
+- **The chain line** in the arranger rows is drawn from `"CHAIN ARR. %d"` (`0x400b4652`, operands at `0x40048eb8` and
+  `0x400496e6`). Its `"%d"` at `0x400b465d` is stock's shared number format (76 users: tempo, MIDI channel, bank);
+  writing it blanked them all. Writing into a declared stock change at run time also makes the loader's check of its
+  bytes fail, and every later install is refused as busy (refusal 5) until a power cycle. The module points the
+  operands at its own text instead.
+- **Redrawing the rows:** stock posts token `0x400c0c41` to the UI queue `0x460d17ae` (`0x40000c3c`) as it takes a
+  chain; posting it again draws the rows with a chain set after stock's own drawing.
+- **Key routing:** the handler of each key code at `0x46c7d8de + code * 0x18`. YES on the main screen `0x4005e4c8`,
+  in the arranger menu `0x4003395c`, in the editor `0x40058f34`; with CUE held stock routes YES elsewhere
+  (`0x400402ec`), so the module notes the screen when CUE goes down. CUE + BANK opens stock's SELECT BANK and CUE + NO
+  its DISARM ALL on the main screen; CUE + YES and CUE + UP/DOWN do nothing there (ot_emu).
+- **The name editor:** `0x4007e664(length, title, buffer, 1, done(ok))`, as RENAME (`0x40049c88`) calls it.
+- **Text in stock's font:** `0x40012bd8(0x400ba876, surface, x, 59 - top, -1, text)` on a copy of the surface at
+  `0x400bf10a` aimed at the module's frame (as pattern-sample-locks does).
+- **0x1001614c** is set by edits and by stock's arrangement writer after it writes a slot (`0x40091748`); the writer
+  chooses slots by its mask or a missing file (`0x40091680`), never by this byte.
+- **Loads and slots 7 and 8:** about 10 s into a RELOAD, stock reads arr01-arr08 into the slots (ot_emu); after a power
+  cycle the slots keep what they held (battery RAM) and the module comes up after stock's project load, so no load hook
+  reaches it. The module keeps "slots 7 and 8 hold setlist songs" and the playing song in its battery record (byte 7),
+  cleared only once the book is read back from its files.

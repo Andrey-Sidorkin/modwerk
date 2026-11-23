@@ -3,7 +3,7 @@
   "id": "songbook",
   "key": "SONGBOOK",
   "name": "Songbook",
-  "version": "0.1.0-experimental",
+  "version": "0.2.0-experimental",
   "category": "system",
   "author": {
     "github": "Andrey-Sidorkin",
@@ -45,14 +45,20 @@
       "key:CUE+RIGHT@ARR CHANGE",
       "screen:ARR MENU CHAIN",
       "screen:SETLSTS",
-      "screen:ARR MENU CHANGE"
+      "screen:ARR MENU CHANGE",
+      "key:CUE+YES@MAIN",
+      "screen:MAIN PART BOX",
+      "screen:ARR MENU TITLE",
+      "screen:ARR ROWS CHAIN LINE"
     ],
     "limitations": [
-      "OS 1.40C, tested on an MKI (the developer's own checks, build f068cd608, base 0.7.13); not tested on an MKII.",
+      "OS 1.40C, tested on an MKI (the developer's own checks: books on build b976e98ff, setlists on build 7a53e26af, base 0.7.13); not tested on an MKII.",
       "Books change only while the transport is stopped: the switch writes and reads the card, which stock itself does only stopped.",
       "Switch back to book 1 before removing the module: without it, stock's next save writes the book in use into arr01 to arr08. Book 1 is kept in a backup (arr01.bak to arr08.bak) and comes back the next time the module is installed and book 1 is chosen.",
       "A project comes back to the book and arrangement it was saved or left on; a power cycle keeps the book in use. Without the module a project opens on book 1.",
-      "Stock's project copy functions copy book 1 only; copying the project folder copies every book."
+      "Stock's project copy functions copy book 1 only; copying the project folder copies every book.",
+      "Setlists borrow the open book's arrangements 7 and 8 while they play; end a setlist (open ARR > BOOKS) before removing the module, or stock's next save writes the setlist's copies into those two arrangements.",
+      "Edits made while a setlist plays are written when it ends; a RELOAD or power cycle before that drops them, as stock drops unsaved changes."
     ],
     "effectId": null
   },
@@ -79,9 +85,9 @@
   },
   "tests": {
     "report": "TESTING.md",
-    "summary": "Host gate (verify.py, 89 checks, a missing, unreadable or partly written book 1 backup, a file that fails to open once and a reload after it among them; several replaying the unit's event orders and stock's two load jobs); stock's file format for arr09 and up, the list redraw and per-book choice under ot_emu. On the developer's MKI (OS 1.40C): switching books 1-16, per-book choice, the playing refusal, ARR SAVE/RELOAD, FUNC + PLAY clears and their undo, a power cycle and arranger mode after LOAD (build c5027552c, base 0.7.5); LOAD and RELOAD returning to book 2 in arranger mode with book 1 intact, the main screen and PLAY on the returned book (build f068cd608, base 0.7.13, beside USB AUDIO), as the developer reported them; distinct books 1 and 2 kept through a power cycle and through a trial of another build with Undo, each followed by SYNC TO CARD (build b976e98ff, package 37f7e94f, base 0.7.13), as the developer reported them.",
+    "summary": "Host gate (verify.py, 218 checks: books, backups, failed reads, reloads; setlists: playing through stock's CHAIN, the end, editing during a show, copy/paste, names, the main-screen and title displays, and every path that can touch slots 7 and 8: reload, power cycle, reinstall, stock refilling them); ot_emu captures of the menu, page, window and main screen and a SAVE/RELOAD reproduction. On the developer's MKI (OS 1.40C, base 0.7.13, beside USB AUDIO and Arr Rows): books through the test procedure (build b976e98ff); setlists playing through with gapless changes, the next song chosen live, copy/paste, names, the displays, an edit during a show saved to its song, and returning into the setlist after RELOAD and a power cycle with the songs intact (build 7a53e26af), as the developer reported them. Two data-loss faults found on the unit during this work are fixed and covered by host tests that fail on the faulty code (TESTING.md).",
     "hardwareStatus": "reported",
-    "evidenceRevision": "b976e98ffbdd054350779271721fbc6d9f422b32",
+    "evidenceRevision": "7a53e26afb39ad292a57bdb63d15a3189b3a866d",
     "gates": [
       "Worst-case cycles under parameter modulation and maximum load",
       "Exact memory region and maximum-instance totals",
