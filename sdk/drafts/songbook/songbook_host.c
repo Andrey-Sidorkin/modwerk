@@ -843,7 +843,7 @@ int main(void)
     as_project_load(); as_project_new(); mark(0x10); as_tick(0);
     { int sw = stock_writes; cs1[CHG] = 1; job();
       check("a project load ends it: the next save writes the book again", stock_writes == sw + 1); }
-    check("and the title is a single arrangement's: ARR, the book, stock's index", !strcmp(as_title_fmt, "ARR 1:%d:%s") && as_title_index == chosen);
+    check("and the title is a single arrangement's: ARR, the book, stock's index", !strcmp(as_title_fmt, "ARR B1:%d:%s") && as_title_index == chosen);
     /* the first file format (no names, "ASSL") is still read */
     { struct file *f = find("/SET/PROJ/arrlists.work");
       memcpy(f->work, "ASSL", 4); memset(f->work + 24 + 16 * 16 * 18, 'X', 256);

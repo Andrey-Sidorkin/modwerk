@@ -597,7 +597,7 @@ static void block_to_slot(unsigned slot, const uint8_t *from) { for (uint32_t i 
 char as_chain_text[16];
 
 /* The Arranger menu's title (stock: "ARR %d:%s" of its index + 1 and the name, 0x40057f1c): manifest.py's SymbolRefs
- * point its index byte and its format here. A single arrangement: "ARR 2:3:NAME" (book, arrangement, name). A setlist:
+ * point its index byte and its format here. A single arrangement: "ARR B2:3:NAME" (book, arrangement, name). A setlist:
  * "STL:GIG IN:2:NAME" (its name, cut as far as the song's name needs the room but never under 7 characters, then the
  * song's name cut instead; the song's place; its name). At most
  * TITLE_MAX characters, the width of the menu's title bar. A % in a name becomes a space: this is a format. */
@@ -608,7 +608,7 @@ static void title_follow(const struct as_state *s)
 {
     char *t = as_title_fmt;
     if (!s->sl_active) {
-        t = put_text(t, "ARR ");
+        t = put_text(t, "ARR B");                         /* "ARR B12:8:" and 16 letters: 26 at most */
         t = put_num(t, s->book + 1u);
         *t++ = ':';
         as_title_index = (uint8_t)rd8(0x80000005u);

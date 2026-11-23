@@ -754,7 +754,7 @@ list_title:
 	.size	list_title, .-list_title
 	.section	.rodata.str1.1
 .LC5:
-	.string	"ARR "
+	.string	"ARR B"
 .LC6:
 	.string	"STL:"
 .LC7:
@@ -777,7 +777,7 @@ title_follow:
 	move.b %d0,(%a1)+
 	addq.l #1,%a0
 	move.b (%a0),%d0
-	cmp.l #.LC5+4,%a0
+	cmp.l #.LC5+5,%a0
 	jne .L164
 	mvz.b 8(%a3),%d0
 	moveq #9,%d1
@@ -789,10 +789,10 @@ title_follow:
 	divu.l %d3,%d1
 	moveq #10,%d4
 	moveq #58,%d5
-	lea as_title_fmt+5,%a0
+	lea as_title_fmt+6,%a0
 	lea (2,%a0),%a2
 	add.l #48,%d1
-	move.b %d1,as_title_fmt+4
+	move.b %d1,as_title_fmt+5
 	remu.l %d4,%d1:%d0
 	move.b %d5,1(%a0)
 	add.l #48,%d1
@@ -950,7 +950,7 @@ title_follow:
 	moveq #10,%d4
 	remu.l %d4,%d1:%d0
 	moveq #58,%d5
-	lea as_title_fmt+4,%a0
+	lea as_title_fmt+5,%a0
 	lea (2,%a0),%a2
 	add.l #48,%d1
 	move.b %d1,(%a0)
