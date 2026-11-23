@@ -39,7 +39,12 @@
     "uiClaims": [
       "key:LEFT@ARR CHANGE",
       "key:RIGHT@ARR CHANGE",
-      "screen:ARR CHANGE"
+      "screen:ARR CHANGE",
+      "key:CUE+YES@ARR CHANGE",
+      "key:CUE+LEFT@ARR CHANGE",
+      "key:CUE+RIGHT@ARR CHANGE",
+      "screen:ARR MENU CHAIN",
+      "screen:SETLSTS"
     ],
     "limitations": [
       "OS 1.40C, tested on an MKI (the developer's own checks, build f068cd608, base 0.7.13); not tested on an MKII.",

@@ -34,6 +34,11 @@
 #define K_PATTERN 0x2e
 #define K_CUE 0x2a
 #define K_YES 0x31
+#define K_NO 0x32
+#define K_UP 0x33
+#define K_DOWN 0x20
+#define K_PLAY 0x28
+#define K_STOP 0x27
 
 #define BOOKS 16u
 #define SLOTS 8u
@@ -146,6 +151,9 @@ struct as_state {
     uint8_t cue_down;        /* CUE held: YES adds to the setlist, LEFT/RIGHT move an arrangement in the book */
     uint8_t cue_yes;         /* a YES taken with CUE: its release is ours too */
     char msg[24];            /* the text of the module's last message box (stock may draw it again later) */
+    uint8_t page;            /* the SETLSTS page is open (the Arranger menu's CHAIN item, replaced) */
+    uint8_t page_cur, page_top;  /* its cursor (a song of the open setlist) and the first song shown */
+    uint8_t page_play;       /* a FUNC + PLAY taken on the page: PLAY's release is ours too */
     uint16_t ticks;
     char path[260];
     char path2[260];
@@ -449,6 +457,28 @@ static void sl_swapped(struct as_state *s, unsigned book, unsigned a, unsigned b
     }
 }
 
+/* Song i of setlist l one place up (dir -1) or down: its new place. */
+static unsigned sl_move(struct as_state *s, unsigned l, unsigned i, int dir)
+{
+    int j = (int)i + dir;
+    if (j < 0 || j >= (int)s->lists.count[l]) return i;
+    struct sl_entry t = s->lists.e[l][i];
+    s->lists.e[l][i] = s->lists.e[l][j];
+    s->lists.e[l][j] = t;
+    s->lists_dirty = 1;
+    return (unsigned)j;
+}
+
+/* Song i out of setlist l; the arrangement itself stays in its book. */
+static void sl_remove(struct as_state *s, unsigned l, unsigned i)
+{
+    unsigned n = s->lists.count[l];
+    if (i >= n) return;
+    for (unsigned k = i; k + 1 < n; ++k) s->lists.e[l][k] = s->lists.e[l][k + 1];
+    s->lists.count[l] = (uint8_t)(n - 1);
+    s->lists_dirty = 1;
+}
+
 /* The book in the slots: its songs' names as they are now (a rename shows in the setlists). */
 static void sl_names(struct as_state *s)
 {
@@ -571,6 +601,7 @@ void as_project_load(void)
      * byte stock applies when the load ends (LOAD clears it as it starts), so stock itself turns the mode back on.
      * The book is switched to once stock has finished. */
     for (unsigned b = 0; b < BOOKS; ++b) s->last[b] = 0;
+    s->page = 0;                                          /* another project's setlists: the page closes */
     int b = read_place(s);
     read_lists(s);
     s->restore = (int8_t)(b > 0 ? b : -1);
@@ -601,6 +632,7 @@ void as_project_new(void)
     s->mode_on = 0;
     for (unsigned b = 0; b < BOOKS; ++b) s->last[b] = 0;
     sl_clear(s);                                          /* a new project has no setlists */
+    s->page = 0;
 }
 
 /* Stock has read the banks; it reads arr01-08 next, so the slots will hold book 1. Where the project was left is read
@@ -738,12 +770,59 @@ static void move_arr(struct as_state *s, int dir)
     draw_change();
 }
 
+/* The Arranger menu's fourth item (CHAIN in stock): its YES opens the SETLSTS page (manifest.py's SymbolRef). */
+void as_setlists_open(void)
+{
+    struct as_state *s = ready();
+    s->page = 1;
+    s->page_cur = 0;
+    s->page_top = 0;
+}
+
+#define PAGE_ROWS 7u
+
+/* Keys while the SETLSTS page is open: all but the transport, FUNC and CUE are the page's. */
+static int page_key(struct as_state *s, int code, int pressed)
+{
+    if (code == K_FUNC || code == K_STOP) return 0;
+    if (code == K_PLAY && !s->page_play && !(pressed && s->func_down)) return 0;  /* PLAY stays stock's */
+    if (!pressed) { if (code == K_PLAY) s->page_play = 0; return 1; }
+    unsigned l = s->lists.open, n = s->lists.count[l];
+    switch (code) {
+    case K_NO: s->page = 0; break;
+    case K_UP: if (s->page_cur) --s->page_cur; break;
+    case K_DOWN: if (s->page_cur + 1u < n) ++s->page_cur; break;
+    case K_LEFT: case K_RIGHT: {
+        int dir = code == K_RIGHT ? 1 : -1;
+        if (s->cue_down) s->page_cur = (uint8_t)sl_move(s, l, s->page_cur, dir);
+        else if ((int)l + dir >= 0 && (int)l + dir < (int)LISTS) {
+            s->lists.open = (uint8_t)((int)l + dir);
+            s->lists_dirty = 1;
+            s->page_cur = 0;
+            s->page_top = 0;
+        }
+        break;
+    }
+    case K_PLAY:                                               /* FUNC + PLAY: the song out of the setlist */
+        if (s->page_play) break;
+        s->page_play = 1;
+        sl_remove(s, l, s->page_cur);
+        if (s->page_cur && s->page_cur >= s->lists.count[l]) --s->page_cur;
+        break;
+    default: break;                                            /* YES: starting a setlist comes next */
+    }
+    if (s->page_cur < s->page_top) s->page_top = s->page_cur;
+    if (s->page_cur >= s->page_top + PAGE_ROWS) s->page_top = (uint8_t)(s->page_cur - PAGE_ROWS + 1u);
+    return 1;
+}
+
 int as_key(int code, int pressed)
 {
     struct as_state *s = ready();
     if (code == K_FUNC) s->func_down = (uint8_t)!!pressed;
     if (code == K_PATTERN && pressed && s->func_down) { s->mode_key = 1; s->mode_key_ticks = 0; }  /* stock's again */
     if (code == K_CUE) { s->cue_down = (uint8_t)!!pressed; return 0; }
+    if (s->page) return page_key(s, code, pressed);
     if (code == K_YES && (s->cue_yes || (s->cue_down && rd32(CHANGE_WINDOW)))) {
         if (!pressed) { s->cue_yes = 0; return 1; }           /* its release is ours too */
         if (s->cue_yes || s->pending >= 0) return 1;          /* a repeat, or a switch under way */
@@ -855,14 +934,32 @@ static const uint16_t GLYPH[17] = {
 
 #ifdef AS_HOST
 void host_set(unsigned char *frame, int x, int y, int on);
+int host_pixel(const unsigned char *frame, int x, int y);
+void host_text(unsigned char *frame, int x, int top, const char *t);
 static void put(unsigned char *frame, int x, int y, int on) { host_set(frame, x, y, on); }
+static int get(const unsigned char *frame, int x, int y) { return host_pixel(frame, x, y); }
+static void text(unsigned char *frame, int x, int top, const char *t) { host_text(frame, x, top, t); }
 #else
 static void put(unsigned char *frame, int x, int y, int on)
 {
     unsigned char *b = frame + x * 8 + 7 - (y >> 3), m = (unsigned char)(1u << (y & 7));
     if (on) *b |= m; else *b &= (unsigned char)~m;
 }
+static int get(const unsigned char *frame, int x, int y) { return frame[x * 8 + 7 - (y >> 3)] >> (y & 7) & 1; }
+/* Text in stock's own list font (0x400ba876), top row at `top`, by stock's text routine on a copy of its drawing
+ * surface aimed at this frame (as pattern-sample-locks' native.c draws). */
+static void text(unsigned char *frame, int x, int top, const char *t)
+{
+    uint32_t surface[7];
+    for (unsigned i = 0; i < 7u; ++i) surface[i] = rd32(0x400bf10au + 4u * i);
+    surface[3] = (uint32_t)(uintptr_t)frame;
+    ((void (*)(uint32_t, void *, int, int, int, const char *))0x40012bd8u)(0x400ba876u, surface, x, 59 - top, -1, t);
+}
 #endif
+static void invert(unsigned char *frame, int x0, int y0, int x1, int y1)
+{
+    for (int y = y0; y <= y1; ++y) for (int x = x0; x <= x1; ++x) put(frame, x, y, !get(frame, x, y));
+}
 
 static void glyph(unsigned char *frame, int x, int y, unsigned g)
 {
@@ -883,9 +980,37 @@ static void label(unsigned char *frame, int top, const uint8_t word[4], unsigned
 
 /* In ARR > CHANGE, over whatever stock drew there: "BOOK 12" at the top right, and "LIST 3" (the setlist CUE + YES
  * adds to) at the bottom right. */
+/* The SETLSTS page, in a window where stock's lists open: "SETLIST 3" and its song count on an inverted title row,
+ * then seven songs as "book.arrangement name" ("2.5 SONG CHARLIE"), the cursor's row inverted. */
+static void draw_page(struct as_state *s, unsigned char *frame)
+{
+    for (int y = 2; y <= 62; ++y) for (int x = 23; x <= 103; ++x) put(frame, x, y, 0);
+    for (int y = 2; y <= 61; ++y) { put(frame, 23, y, 1); put(frame, 102, y, 1); put(frame, 103, y + 1, 1); }
+    for (int x = 23; x <= 102; ++x) { put(frame, x, 2, 1); put(frame, x, 61, 1); put(frame, x + 1, 62, 1); }
+    unsigned l = s->lists.open, n = s->lists.count[l];
+    char line[24], *t = put_text(line, "SETLIST ");
+    t = put_num(t, l + 1);
+    *t = 0;
+    text(frame, 25, 4, line);
+    t = put_num(line, n); t = put_text(t, "/16"); *t = 0;
+    text(frame, 101 - 4 * (int)(t - line), 4, line);
+    invert(frame, 24, 3, 101, 9);
+    if (!n) { text(frame, 25, 12, "EMPTY"); return; }
+    for (unsigned r = 0; r < PAGE_ROWS && s->page_top + r < n; ++r) {
+        const struct sl_entry *e = &s->lists.e[l][s->page_top + r];
+        t = put_num(line, e->book + 1u); *t++ = '.'; t = put_num(t, e->slot + 1u); *t++ = ' ';
+        for (unsigned k = 0; k < 13u && e->name[k]; ++k) *t++ = e->name[k];
+        *t = 0;
+        int top = 12 + 7 * (int)r;
+        text(frame, 25, top, line);
+        if (s->page_top + r == s->page_cur) invert(frame, 24, top - 1, 101, top + 5);
+    }
+}
+
 void as_draw(unsigned char *frame)
 {
     struct as_state *s = ready();
+    if (s->page) { draw_page(s, frame); return; }
     if (!rd32(CHANGE_WINDOW)) return;
     static const uint8_t book[4] = {G_B, G_O, G_O, G_K}, list[4] = {G_L, G_I, G_S, G_T};
     label(frame, 0, book, s->book + 1u);

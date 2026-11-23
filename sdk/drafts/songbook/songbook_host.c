@@ -12,6 +12,7 @@ int as_key(int code, int pressed);
 void as_tick(void *api);
 void as_draw(unsigned char *frame);
 int as_writer(uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4);
+void as_setlists_open(void);
 void as_project_load(void);
 void as_project_new(void);
 unsigned as_project_loaded(void);
@@ -26,6 +27,11 @@ void as_host_back_memory(void);
 #define RIGHT 0x21
 #define CUE 0x2a
 #define YES 0x31
+#define NO 0x32
+#define UP 0x33
+#define DOWN 0x20
+#define PLAY 0x28
+#define FUNC 0x2d
 #define BLOCK 5652u
 #define SLOTS 8u
 #define W(n) (4u + (n) * BLOCK)                  /* offsets into cs1 */
@@ -162,6 +168,16 @@ int host_stock_writer(uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4)
     return 0;
 }
 static unsigned char lcd[1024];
+/* Stock's text routine, as the module calls it: what was drawn where, in order. */
+static struct { int x, top; char t[32]; } texts[16];
+static int ntexts;
+void host_text(unsigned char *frame, int x, int top, const char *s)
+{
+    (void)frame;
+    if (ntexts < 16) { texts[ntexts].x = x; texts[ntexts].top = top; snprintf(texts[ntexts].t, sizeof texts[ntexts].t, "%s", s); ++ntexts; }
+}
+static const char *text_at(int top) { for (int i = 0; i < ntexts; ++i) if (texts[i].top == top) return texts[i].t; return ""; }
+static void page_draw(void) { memset(lcd, 0, sizeof lcd); ntexts = 0; as_draw(lcd); }
 void host_set(unsigned char *frame, int x, int y, int on) { unsigned char *b = frame + x * 8 + 7 - (y >> 3), m = (unsigned char)(1u << (y & 7)); if (on) *b |= m; else *b &= (unsigned char)~m; }
 static int lit(int x, int y) { return lcd[x * 8 + 7 - (y >> 3)] >> (y & 7) & 1; }
 int host_pixel(const unsigned char *frame, int x, int y) { return frame[x * 8 + 7 - (y >> 3)] >> (y & 7) & 1; }
@@ -579,6 +595,49 @@ int main(void)
     as_key(CUE, 1);
     check("CUE + YES outside ARR > CHANGE stays stock's", tap(YES) == 0);
     as_key(CUE, 0);
+
+    /* the SETLSTS page (the Arranger menu's CHAIN item): setlist 1 holds one song here (INTRO, now arrangement 4) */
+    change_window = 0x46c7d384u;
+    for (unsigned n = 0; n < 3; ++n) { choose(n == 0 ? 0 : n == 1 ? 4 : 7); as_key(CUE, 1); tap(YES); as_key(CUE, 0); }
+    change_window = 0;
+    job();
+    check("four songs in setlist 1 for the page checks", lists_count(0) == 4);
+    page_draw();
+    check("nothing of the page before it is opened", ntexts == 0);
+    as_setlists_open();
+    page_draw();
+    check("the page: SETLIST 1 and its count on the title row", !strcmp(text_at(4), "SETLIST 1") && !strcmp(texts[1].t, "4/16"));
+    check("its songs as book.arrangement and name", !strcmp(text_at(12), "1.4 INTRO") && !strcmp(text_at(19), "1.1 SONG A") && !strcmp(text_at(26), "1.5 SONG E") && !strcmp(text_at(33), "1.8 SONG H"));
+    check("the title row inverted, the first song under the cursor too", lit(60, 3) && lit(100, 11) && !lit(100, 18));
+    check("UP/DOWN, YES and NO are the page's; PLAY stays stock's", tap(DOWN) == 1 && tap(UP) == 1 && tap(YES) == 1 && tap(PLAY) == 0);
+    tap(DOWN); tap(DOWN); page_draw();
+    check("DOWN moves the cursor", lit(100, 25) && !lit(100, 11));
+    as_key(CUE, 1); tap(LEFT); as_key(CUE, 0); job();
+    check("CUE + LEFT moves the song up, and the cursor with it", entry(0, 1)[1] == 4 && entry(0, 2)[1] == 0 && (page_draw(), lit(100, 18)));
+    as_key(FUNC, 1);
+    check("FUNC + PLAY is the page's", tap(PLAY) == 1);
+    as_key(FUNC, 0); job();
+    check("and takes the song out of the setlist, the arrangement left in its book", lists_count(0) == 3 && entry(0, 1)[1] == 0 && !memcmp(&cs1[W(4)], "SONG E", 6));
+    for (int i = 0; i < 5; ++i) tap(DOWN);
+    page_draw();
+    check("the cursor stops at the last song", lit(100, 25) && !lit(100, 32));
+    tap(RIGHT); page_draw();
+    check("RIGHT shows setlist 2, empty", !strcmp(text_at(4), "SETLIST 2") && !strcmp(text_at(12), "EMPTY"));
+    tap(NO); page_draw();
+    check("NO closes the page", ntexts == 0);
+    change_window = 0x46c7d384u; choose(1);
+    as_key(CUE, 1); tap(YES); as_key(CUE, 0);
+    check("and CUE + YES now adds to setlist 2", !strcmp(last_message, "B1 2 ADDED TO LIST 2"));
+    memset(lcd, 0, sizeof lcd); as_draw(lcd);
+    check("LIST 2 shown in ARR > CHANGE", !lit(124, 57) && !lit(126, 57));
+    change_window = 0; job();
+    for (int i = 0; i < 9; ++i) { change_window = 0x46c7d384u; choose(i % 8); as_key(CUE, 1); tap(YES); as_key(CUE, 0); }
+    change_window = 0; job();
+    as_setlists_open(); for (int i = 0; i < 9; ++i) tap(DOWN); page_draw();
+    check("a long setlist scrolls: the cursor's song on the last row", lit(100, 54) && !lit(100, 47) && !strcmp(text_at(54), "1.1 SONG A") && !strcmp(text_at(12), "1.3 SONG D"));
+    as_project_load(); page_draw();
+    check("a project load closes the page", ntexts == 0);
+    as_project_new(); job();
 
     printf("%d checks, %d failed\n", checks, failures);
     return failures != 0;
