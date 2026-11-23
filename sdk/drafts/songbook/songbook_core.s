@@ -5629,27 +5629,21 @@ as_draw:
 	add.l %d3,%d0
 .L930:
 	move.b (%a0)+,(%a1)+
-	cmp.l %d0,%a0
+	cmp.l %a0,%d0
 	jne .L930
 	move.l %d2,%a0
 	add.l %d3,%a0
 	clr.b (%a0)
-	move.l %a6,%d5
-	moveq #48,%d4
-	mov3q.l #1,%d6
-	add.l #80,%d5
-	lea (336,%a6),%a1
+	move.l %a6,%d4
+	moveq #33,%d0
+	mov3q.l #1,%d5
+	add.l #91,%d4
+	lea (331,%a6),%a1
 .L931:
 	mov3q.l #7,%d3
-	and.l %d4,%d3
-	move.l %d4,%d1
-	asr.l #3,%d1
-	mov3q.l #7,%d0
-	move.l %d5,%a0
-	sub.l %d1,%d0
-	move.l %d6,%d1
-	add.l %d0,%a0
-	add.l %a1,%d0
+	and.l %d0,%d3
+	move.l %d5,%d1
+	move.l %d4,%a0
 	lsl.l %d3,%d1
 	not.l %d1
 .L932:
@@ -5657,18 +5651,24 @@ as_draw:
 	addq.l #8,%a0
 	and.l %d1,%d3
 	move.b %d3,-8(%a0)
-	cmp.l %d0,%a0
+	cmp.l %a1,%a0
 	jne .L932
-	addq.l #1,%d4
-	moveq #57,%d7
-	cmp.l %d4,%d7
+	addq.l #1,%d0
+	moveq #40,%d7
+	cmp.l %d0,%d7
 	jne .L931
 	move.l %d2,-(%sp)
-	pea 50.w
+	pea 34.w
 	pea 12.w
 	move.l %a6,-(%sp)
 	jsr (%a3)
-	lea (16,%sp),%sp
+	pea 39.w
+	pea 40.w
+	pea 33.w
+	pea 11.w
+	move.l %a6,-(%sp)
+	jsr (%a4)
+	lea (36,%sp),%sp
 .L913:
 	tst.b 5001(%a2)
 	jeq .L915
@@ -6077,11 +6077,11 @@ as_draw:
 	mulu.w #18,%d0
 	add.l %d0,%a2
 .L901:
-	cmp.l %d4,%d3
-	jcc .L891
+	cmp.l %d3,%d4
+	jls .L891
 	cmp.l 52(%sp),%d3
 	jeq .L955
-	cmp.l %d6,%d3
+	cmp.l %d3,%d6
 	jeq .L1002
 	moveq #32,%d0
 .L902:
@@ -6136,7 +6136,7 @@ as_draw:
 	tst.b %d0
 	jeq .L1003
 	move.b %d0,(%a1)+
-	cmp.l %a1,%d1
+	cmp.l %d1,%a1
 	jne .L906
 	move.l %d1,%a0
 	clr.b (%a0)
@@ -6147,7 +6147,7 @@ as_draw:
 	move.l %a6,-(%sp)
 	jsr (%a3)
 	lea (16,%sp),%sp
-	cmp.l %d5,%d3
+	cmp.l %d3,%d5
 	jeq .L1004
 .L909:
 	addq.l #1,%d3
@@ -6273,7 +6273,7 @@ as_draw:
 	move.l %a6,-(%sp)
 	jsr (%a3)
 	lea (16,%sp),%sp
-	cmp.l %d5,%d3
+	cmp.l %d3,%d5
 	jne .L909
 	jra .L1004
 .L945:
@@ -6447,6 +6447,7 @@ as_draw:
 	moveq #41,%d4
 	lea text,%a3
 	move.l %a4,%d3
+	lea invert,%a4
 	move.l %a1,-(%sp)
 	pea 41.w
 	sub.l %d0,%d4
@@ -6458,7 +6459,7 @@ as_draw:
 	pea 40.w
 	pea 17.w
 	move.l %a6,-(%sp)
-	jsr invert
+	jsr (%a4)
 	lea (36,%sp),%sp
 	mvz.b 5302(%a2),%d0
 	move.l %d0,%d5
@@ -6536,12 +6537,12 @@ as_draw:
 	add.l #48,%d1
 	move.b %d1,(%a0)+
 .L1007:
-	move.l %a6,%d5
-	moveq #48,%d4
+	move.l %a6,%d4
+	moveq #33,%d0
 	clr.b (%a0)
-	mov3q.l #1,%d6
-	add.l #80,%d5
-	lea (336,%a6),%a1
+	mov3q.l #1,%d5
+	add.l #91,%d4
+	lea (331,%a6),%a1
 	jra .L931
 .L961:
 	moveq #10,%d3

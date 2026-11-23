@@ -1492,9 +1492,8 @@ static void draw_peek(struct as_state *s, unsigned char *frame)
     }
 }
 
-/* While a setlist plays, on the main screen: a list sign and the song's place ("2/5"), white on black in the Part box's
- * free second line (x 17-40, beside its wave icon), so none of the four arrangement rows is covered. The name is on
- * the SETLSTS page and in the CUE + YES window. */
+/* While a setlist plays, the Part box on the main screen shows it: its name on the first line, a list sign and the
+ * song's place ("2/5") on the second (x 17-40, beside the wave icon), white on black; no arrangement row is covered. */
 static void draw_mark(struct as_state *s, unsigned char *frame)
 {
     char line[8], *t = put_num(line, s->sl_cur + 1u);
@@ -1505,7 +1504,8 @@ static void draw_mark(struct as_state *s, unsigned char *frame)
     for (int r = 0; r < 5; r += 2) for (int x = 18; x <= 20; ++x) put(frame, x, 41 + r, 1);   /* the list sign */
     text(frame, 41 - 4 * (int)(t - line), 41, line);           /* right-aligned */
     invert(frame, 17, 40, 40, 46);
-    /* The pattern line under it ("A01 00'", x 10-41): the setlist's name, its first 7 characters ("LIST n" without). */
+    /* The Part box's first line ("Pt:1 ONE"): the setlist's name, its first 7 characters ("LIST n" without), white on
+     * black; the pattern line under the box stays stock's. */
     char name[8];
     t = name;
     const char *n = s->lists.name[s->sl_list];
@@ -1515,8 +1515,9 @@ static void draw_mark(struct as_state *s, unsigned char *frame)
     if (!k) { t = put_text(t, "LIST "); t = put_num(t, s->sl_list + 1u); }
     else for (unsigned i = 0; i < k; ++i) *t++ = n[i];
     *t = 0;
-    for (int y = 48; y <= 56; ++y) for (int x = 10; x <= 41; ++x) put(frame, x, y, 0);
-    text(frame, 12, 50, name);
+    for (int y = 33; y <= 39; ++y) for (int x = 11; x <= 40; ++x) put(frame, x, y, 0);
+    text(frame, 12, 34, name);
+    invert(frame, 11, 33, 40, 39);
 }
 
 void as_draw(unsigned char *frame)
