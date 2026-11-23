@@ -793,8 +793,9 @@ int main(void)
     check("YES is the window's", tap(YES) == 1);
     page_draw();
     check("and moves the > to the cursor", text_at(26)[0] == '>' && text_at(19)[0] == ' ');
+    check("the third song is next at once, chained, before CUE is released", cs1[W(7) + 100] == s2 && chain() == 7);
     as_key(CUE, 0); page_draw();
-    check("releasing CUE closes it and puts the third song next, chained", ntexts == 0 && cs1[W(7) + 100] == s2 && chain() == 7);
+    check("releasing CUE only closes it", ntexts == 0 && cs1[W(7) + 100] == s2 && chain() == 7);
     stock_chain(); as_tick(0);
     check("past the first song the third plays, and it is the last: nothing chained", chosen == 7 && chain() == 0xffffffffu);
     /* the window open across a song change: the * and the > follow, unless a song was chosen with YES */
@@ -809,9 +810,8 @@ int main(void)
     as_setlists_open(); tap(UP); tap(UP); tap(YES); job(); as_tick(0);              /* from the first song again */
     as_key(CUE, 1); tap(YES); tap(DOWN); tap(DOWN); tap(YES);   /* song 3 chosen to follow song 1 */
     stock_chain(); as_tick(0); page_draw();           /* but song 2 starts before CUE is released */
-    check("a chosen song stays marked through the change", text_at(26)[0] == '>' && text_at(19)[0] == '*');
+    check("song 3 was chosen at once, so song 3 starts: * on it, nothing after it", text_at(26)[0] == '*' && chain() == 0xffffffffu);
     as_key(CUE, 0);
-    check("and follows the song now playing when CUE is released", chain() == 6 && cs1[W(6) + 100] == s2);
     yes_handler = 0;
 
     as_project_load(); as_project_new(); mark(0x10); as_tick(0);

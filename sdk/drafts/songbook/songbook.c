@@ -182,7 +182,6 @@ struct as_state {
     uint8_t peek;            /* CUE + YES on the main screen: the playing setlist shown while CUE is held */
     uint8_t peek_cur;        /* there, the cursor (UP/DOWN) */
     uint8_t peek_next;       /* and the song marked to come next ('>'; a further YES moves it to the cursor); 0xff none */
-    uint8_t peek_chosen;     /* a further YES chose it: it stays through a song change until CUE is released */
     uint8_t cue_main;        /* CUE went down on the main screen (stock routes YES elsewhere once CUE is held) */
     uint8_t sl_cur_slot;     /* the slot that song is in (SL_A or SL_B) */
     uint8_t song_at[2];      /* the song in SL_A, SL_B; 0xff none */
@@ -1117,14 +1116,13 @@ static int page_key(struct as_state *s, int code, int pressed)
     return 1;
 }
 
-/* CUE released over the playing setlist: the window closes; a different song marked to come next goes into the free
- * slot, chained, and the setlist goes on in order after it. */
-static void peek_close(struct as_state *s)
+/* YES in the playing-setlist window: the song under the cursor comes next, at once (into the free slot, chained); the
+ * setlist goes on in order after it. */
+static void peek_choose(struct as_state *s)
 {
-    s->peek = 0;
-    if (!s->sl_active || s->sl_end) return;
-    unsigned next = s->sl_cur_slot == SL_A ? 1u : 0u, k = s->peek_next;
-    if (k >= s->sl_n || s->song_at[next] == k) return;
+    unsigned next = s->sl_cur_slot == SL_A ? 1u : 0u, k = s->peek_cur;
+    s->peek_next = (uint8_t)k;
+    if (!s->sl_active || s->sl_end || k >= s->sl_n || s->song_at[next] == k) return;
     put_song(s, next, k);
     set_chain(next ? SL_B : SL_A);
 }
@@ -1137,7 +1135,7 @@ int as_key(int code, int pressed)
     if (code == K_CUE) {
         s->cue_down = (uint8_t)!!pressed;
         if (pressed) s->cue_main = rd32(KEYS + K_YES * 0x18u) == MAIN_YES;   /* before stock's CUE layer routes YES */
-        if (!pressed && s->peek) peek_close(s);               /* released: the window closes, the choice applies */
+        if (!pressed) s->peek = 0;                            /* released: the window closes */
         return 0;
     }
     if (s->peek) {                                            /* the playing setlist shown */
@@ -1149,7 +1147,7 @@ int as_key(int code, int pressed)
             return 1;
         }
         if (code == K_YES) {                                  /* a further YES: the '>' to the cursor */
-            if (pressed && !s->cue_yes) { s->peek_next = s->peek_cur; s->peek_chosen = 1; }
+            if (pressed && !s->cue_yes) peek_choose(s);
             if (!pressed) s->cue_yes = 0;                     /* the opening YES's release changes nothing */
             return 1;
         }
@@ -1160,7 +1158,6 @@ int as_key(int code, int pressed)
         s->peek = 1;
         s->cue_yes = 1;                                       /* this YES opens; its release is ours too */
         s->peek_cur = s->sl_cur;
-        s->peek_chosen = 0;
         s->peek_next = s->song_at[next] < s->sl_n ? s->song_at[next] : 0xff;
         return 1;
     }
@@ -1277,8 +1274,8 @@ void as_tick(void *api)
             if (k < s->sl_n) put_song(s, done, k); else s->song_at[done] = 0xff;
             next = done;
             next_slot = done ? SL_B : SL_A;
-            /* The window open over it follows: the '>' on the new next song, unless one was chosen with YES. */
-            if (s->peek && !s->peek_chosen) s->peek_next = s->song_at[next] < s->sl_n ? s->song_at[next] : 0xff;
+            /* The window open over it follows: the '>' on the new next song. */
+            if (s->peek) s->peek_next = s->song_at[next] < s->sl_n ? s->song_at[next] : 0xff;
         }
         /* The chain to the next slot, every frame: song 2 played with its chain gone on the developer's MKI (23
          * November 2026), and a chain cleared while a song plays would loop it instead of going on. */
