@@ -238,6 +238,13 @@ CUE + YES and CUE + LEFT/RIGHT in BOOKS; no message on a restart from another so
 the main screen shows the book for a moment before the setlist. Once, in stock's name editor, the character choice
 stayed open after every key was released; not reproduced.
 
+After a LOAD back into a setlist the module took two or three card jobs of its own (read the project's files; switch
+the book; start the setlist) and the main screen showed the book before the setlist. Since `3186f4341` the Part box
+shows the setlist while it is due to come back, and since `331dd4536` one job of the module's does all three. On
+`331dd4536` (package `346fd848`), as the developer reported it: A back in its setlist on song 2 and PLAY going on to song
+3; the module's event log showed one job of its own after stock's load; about as many jobs on the screen as loading a
+project the module brings nothing back for (B on book 1), one more.
+
 ## Edge cases
 
 | Case | Why this change makes it a risk | How run | Result |
