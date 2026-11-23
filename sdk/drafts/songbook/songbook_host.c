@@ -656,6 +656,16 @@ int main(void)
     change_window = 0; job();
     as_setlists_open(); for (int i = 0; i < 9; ++i) tap(DOWN); page_draw();
     check("a long setlist scrolls: the cursor's song on the last row", lit(100, 54) && !lit(100, 47) && !strcmp(text_at(54), "1.1 SONG A") && !strcmp(text_at(12), "1.3 SONG D"));
+    /* installed into an open project: its setlists are read by a card job before they are shown or added to */
+    as_host_reinstall(); as_modules_ready();
+    { int pp = posted; change_window = 0x46c7d384u; choose(1);
+      as_key(CUE, 1); tap(YES); as_key(CUE, 0); change_window = 0;
+      check("after an install, CUE + YES first reads the setlists: a card job, READING SETLISTS, nothing added", posted == pp + 1 && !strcmp(last_message, "READING SETLISTS"));
+      as_setlists_open(); page_draw();
+      check("the page meanwhile says READING", !strcmp(text_at(12), "READING...") && posted == pp + 1);
+      job(); page_draw();
+      check("once read, the page shows setlist 2 with its ten songs", !strcmp(text_at(4), "SETLIST 2") && !strcmp(texts[1].t, "10/16"));
+      tap(NO); }
     as_project_load(); page_draw();
     check("a project load closes the page", ntexts == 0);
     as_project_new(); job();

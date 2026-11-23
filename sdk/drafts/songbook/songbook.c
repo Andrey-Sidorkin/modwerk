@@ -150,6 +150,8 @@ struct as_state {
     uint8_t place[24];       /* arrbook.work: magic, book, the 16 last choices */
     struct sl_lists lists;   /* the setlists, as in arrlists.work once lists_dirty is 0 */
     uint8_t lists_dirty;     /* changed since written: the card task writes them with the next sync */
+    uint8_t lists_unread;    /* installed into an open project: arrlists.work not read yet (the next card job reads it) */
+    uint8_t lists_req;       /* a card job posted only to read them */
     uint8_t cue_down;        /* CUE held: YES adds to the setlist, LEFT/RIGHT move an arrangement in the book */
     uint8_t cue_yes;         /* a YES taken with CUE: its release is ours too */
     char msg[24];            /* the text of the module's last message box (stock may draw it again later) */
@@ -208,6 +210,7 @@ static struct as_state *ready(void)
     s->restore = -1;
     s->sl_req = -1;
     s->sl_restart = -1;
+    s->lists_unread = 1;                                 /* a project may be open already: its setlists not read */
     s->mode_pref = rd32(ARR_MODE) ? 1 : 0;
     s->since_hook = 4000;
     return s;
@@ -443,6 +446,7 @@ static void sl_clear(struct as_state *s)
     uint8_t *p = (uint8_t *)&s->lists;
     for (unsigned i = 0; i < sizeof s->lists; ++i) p[i] = 0;
     s->lists_dirty = 0;
+    s->lists_unread = 0;
 }
 
 /* A slot's name, as stock's list shows it ("%.16s" of the block's first bytes). */
@@ -531,6 +535,7 @@ static void read_lists(struct as_state *s)
     }
     if (!ok) sl_clear(s);
     s->lists_dirty = 0;
+    s->lists_unread = 0;
 }
 
 /* ---------------------------------------------------------------- a setlist playing */
@@ -652,6 +657,8 @@ static int sl_finish(struct as_state *s)
 int as_writer(uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4)
 {
     struct as_state *s = ready();
+    if (s->lists_unread) read_lists(s);                   /* installed into an open project: its setlists first */
+    if (s->lists_req) { s->lists_req = 0; s->hush = 1; }
     if (s->sl_active) {                                   /* slots 7 and 8 hold setlist songs: no book file written */
         if (s->sl_end) {
             s->hush = 1;
@@ -885,6 +892,21 @@ static int stopped(void)
 static char *put_text(char *t, const char *x) { while (*x) *t++ = *x++; return t; }
 static char *put_num(char *t, unsigned n) { if (n >= 10) *t++ = (char)('0' + n / 10); *t++ = (char)('0' + n % 10); return t; }
 
+/* The setlists in memory? After an install into an open project they are read by a card job first: post one (once)
+ * and say so; 0 until it has run. */
+static int lists_ready(struct as_state *s)
+{
+    if (!s->lists_unread) return 1;
+    if (!stopped()) { message("STOP TO READ SETLISTS"); return 0; }   /* stock's card job would stop playback */
+    if (!s->lists_req && s->pending < 0) {
+        int rc = post_write();
+        if (rc == -7) { s->lists_unread = 0; return 1; }      /* no project: nothing to read */
+        if (rc >= 0) s->lists_req = 1;
+    }
+    message("READING SETLISTS");
+    return 0;
+}
+
 /* CUE + YES in ARR > CHANGE: the arrangement under the cursor to the end of the open setlist, and say so. */
 static void add_to_list(struct as_state *s)
 {
@@ -939,6 +961,7 @@ void as_setlists_open(void)
     s->page = 1;
     s->page_cur = 0;
     s->page_top = 0;
+    if (s->lists_unread) { lists_ready(s); return; }     /* drawn as READING until the card job has read them */
     /* The cursor on the song playing, or else on the arrangement chosen now, when the setlist holds it. */
     unsigned l = s->lists.open, n = s->lists.count[l];
     if (s->sl_active && s->sl_list == l && s->sl_cur < n) s->page_cur = s->sl_cur;
@@ -955,6 +978,7 @@ static int page_key(struct as_state *s, int code, int pressed)
     if (code == K_PLAY && !s->page_play && !(pressed && s->func_down)) return 0;  /* PLAY stays stock's */
     if (!pressed) { if (code == K_PLAY) s->page_play = 0; return 1; }
     unsigned l = s->lists.open, n = s->lists.count[l];
+    if (s->lists_unread && code != K_NO) return 1;            /* still reading them */
     switch (code) {
     case K_NO: s->page = 0; break;
     case K_UP: if (s->page_cur) --s->page_cur; break;
@@ -1005,7 +1029,7 @@ int as_key(int code, int pressed)
         if (!pressed) { s->cue_yes = 0; return 1; }           /* its release is ours too */
         if (s->cue_yes || s->pending >= 0) return 1;          /* a repeat, or a switch under way */
         s->cue_yes = 1;
-        add_to_list(s);
+        if (lists_ready(s)) add_to_list(s);
         return 1;
     }
     if (code != K_LEFT && code != K_RIGHT) return 0;
@@ -1198,6 +1222,7 @@ static void draw_page(struct as_state *s, unsigned char *frame)
     for (int y = 2; y <= 62; ++y) for (int x = 23; x <= 103; ++x) put(frame, x, y, 0);
     for (int y = 2; y <= 61; ++y) { put(frame, 23, y, 1); put(frame, 102, y, 1); put(frame, 103, y + 1, 1); }
     for (int x = 23; x <= 102; ++x) { put(frame, x, 2, 1); put(frame, x, 61, 1); put(frame, x + 1, 62, 1); }
+    if (s->lists_unread) { text(frame, 25, 4, "SETLISTS"); invert(frame, 24, 3, 101, 9); text(frame, 25, 12, "READING..."); return; }
     unsigned l = s->lists.open, n = s->lists.count[l];
     char line[24], *t = put_text(line, "SETLIST ");
     t = put_num(t, l + 1);
