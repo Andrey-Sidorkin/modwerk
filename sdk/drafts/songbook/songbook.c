@@ -217,6 +217,9 @@ void as_host_back_memory(void) { st = saved_st; }     /* ... and this one comes 
 #endif
 
 static void title_follow(const struct as_state *s);
+static char *put_text(char *t, const char *x);
+static char *put_num(char *t, unsigned n);
+static char *list_title(const struct as_state *s, char *t, unsigned l);
 static struct as_state *ready(void)
 {
     struct as_state *s = st_at;
@@ -593,17 +596,38 @@ static void block_to_slot(unsigned slot, const uint8_t *from) { for (uint32_t i 
  * It is a format string, so a % in a name becomes a space; stock's own text and its shared "%d" stay untouched. */
 char as_chain_text[16];
 
-/* The Arranger menu's title ("ARR %d:%s" of stock's index + 1 and the name, 0x40057f1c): manifest.py's SymbolRefs point
- * its index byte and its format here. Stock's own outside a setlist; in one, "SONG 2:NAME", the song's place. */
+/* The Arranger menu's title (stock: "ARR %d:%s" of its index + 1 and the name, 0x40057f1c): manifest.py's SymbolRefs
+ * point its index byte and its format here. A single arrangement: "ARR 2:3:NAME" (book, arrangement, name). A setlist:
+ * "STL:GIG IN:2:NAME" (its name, cut as far as the song's name needs the room; the song's place; its name). At most
+ * TITLE_MAX characters, the width of the menu's title bar. A % in a name becomes a space: this is a format. */
+#define TITLE_MAX 26u
 uint8_t as_title_index;
-char as_title_fmt[12];
+char as_title_fmt[32];
 static void title_follow(const struct as_state *s)
 {
-    const char *f = s->sl_active ? "SONG %d:%s" : "ARR %d:%s";
-    unsigned i = 0;
-    for (; f[i]; ++i) as_title_fmt[i] = f[i];
-    as_title_fmt[i] = 0;
-    as_title_index = s->sl_active ? s->sl_cur : (uint8_t)rd8(0x80000005u);
+    char *t = as_title_fmt;
+    if (!s->sl_active) {
+        t = put_text(t, "ARR ");
+        t = put_num(t, s->book + 1u);
+        *t++ = ':';
+        as_title_index = (uint8_t)rd8(0x80000005u);
+    } else {
+        unsigned song = 0, slot = s->sl_cur_slot;
+        while (song < NAME_LEN && rd8(WORKING + slot * BLOCK + song)) ++song;
+        unsigned place = s->sl_cur + 1u >= 10u ? 2u : 1u, used = 4u + 1u + place + 1u + song;   /* "STL:" ":" n ":" */
+        unsigned room = TITLE_MAX > used ? TITLE_MAX - used : 0;
+        char name[16], *e = list_title(s, name, s->sl_list);
+        unsigned k = (unsigned)(e - name);
+        if (k > 15u) k = 15u;
+        while (k > room) --k;
+        while (k && name[k - 1] == ' ') --k;
+        t = put_text(t, "STL:");
+        for (unsigned i = 0; i < k; ++i) *t++ = name[i] == '%' ? ' ' : name[i];
+        if (k) *t++ = ':';
+        as_title_index = s->sl_cur;
+    }
+    t = put_text(t, "%d:%s");
+    *t = 0;
 }
 static void next_text(unsigned slot)
 {

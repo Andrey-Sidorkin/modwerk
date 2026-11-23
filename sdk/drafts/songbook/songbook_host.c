@@ -53,7 +53,7 @@ static uint8_t msg_up;               /* 0x460d1e70's low byte: a message box is 
 static int closes, events;
 extern char as_chain_text[16];
 extern uint8_t as_title_index;
-extern char as_title_fmt[12];
+extern char as_title_fmt[32];
 #define chain_text as_chain_text
 static int shared_writes;
 static char *named;                      /* the buffer stock's name editor was opened on */
@@ -794,7 +794,7 @@ int main(void)
     change_window = 0x46c7d384u; as_tick(0); job(); change_window = 0; as_tick(0);   /* the last run ended */
     as_setlists_open(); tap(UP); tap(UP); tap(YES); job(); as_tick(0);              /* again from the first song */
     check("a setlist from the first song: song 2 next", chosen == 6 && chain() == 7 && cs1[W(7) + 100] == s1);
-    check("the Arranger menu's title: SONG and the song's place while a setlist plays", !strcmp(as_title_fmt, "SONG %d:%s") && as_title_index == 0);
+    check("the Arranger menu's title in a setlist: STL, its name cut to the room the song's 16-letter name leaves, the place", !strcmp(as_title_fmt, "STL:SET:%d:%s") && as_title_index == 0);
     yes_handler = 0x40058f34u;                       /* the editor's: not the main screen */
     as_key(CUE, 1);
     check("CUE + YES in the editor is not the setlist's", tap(YES) == 0);
@@ -843,7 +843,7 @@ int main(void)
     as_project_load(); as_project_new(); mark(0x10); as_tick(0);
     { int sw = stock_writes; cs1[CHG] = 1; job();
       check("a project load ends it: the next save writes the book again", stock_writes == sw + 1); }
-    check("and the title is stock's again: ARR and stock's index", !strcmp(as_title_fmt, "ARR %d:%s") && as_title_index == chosen);
+    check("and the title is a single arrangement's: ARR, the book, stock's index", !strcmp(as_title_fmt, "ARR 1:%d:%s") && as_title_index == chosen);
     /* the first file format (no names, "ASSL") is still read */
     { struct file *f = find("/SET/PROJ/arrlists.work");
       memcpy(f->work, "ASSL", 4); memset(f->work + 24 + 16 * 16 * 18, 'X', 256);
