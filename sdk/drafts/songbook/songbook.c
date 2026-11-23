@@ -216,6 +216,7 @@ void as_host_keep_memory(void) { saved_st = st; }     /* another build runs a tr
 void as_host_back_memory(void) { st = saved_st; }     /* ... and this one comes back with its memory as it was */
 #endif
 
+static void title_follow(const struct as_state *s);
 static struct as_state *ready(void)
 {
     struct as_state *s = st_at;
@@ -232,6 +233,7 @@ static struct as_state *ready(void)
     s->lists_unread = 1;                                 /* a project may be open already: its setlists not read */
     s->mode_pref = rd32(ARR_MODE) ? 1 : 0;
     s->since_hook = 4000;
+    title_follow(s);
     return s;
 }
 
@@ -590,6 +592,19 @@ static void block_to_slot(unsigned slot, const uint8_t *from) { for (uint32_t i 
  * bytes fail, and every later install was refused as busy until a power cycle (the developer's MKI, 23 November 2026).
  * It is a format string, so a % in a name becomes a space; stock's own text and its shared "%d" stay untouched. */
 char as_chain_text[16];
+
+/* The Arranger menu's title ("ARR %d:%s" of stock's index + 1 and the name, 0x40057f1c): manifest.py's SymbolRefs point
+ * its index byte and its format here. Stock's own outside a setlist; in one, "SONG 2:NAME", the song's place. */
+uint8_t as_title_index;
+char as_title_fmt[12];
+static void title_follow(const struct as_state *s)
+{
+    const char *f = s->sl_active ? "SONG %d:%s" : "ARR %d:%s";
+    unsigned i = 0;
+    for (; f[i]; ++i) as_title_fmt[i] = f[i];
+    as_title_fmt[i] = 0;
+    as_title_index = s->sl_active ? s->sl_cur : (uint8_t)rd8(0x80000005u);
+}
 static void next_text(unsigned slot)
 {
     unsigned k = 0;
@@ -1327,6 +1342,7 @@ void as_tick(void *api)
         }
     }
     if (s->reread && s->pending < 0 && !s->reread_posted && stopped() && post_write() >= 0) s->reread_posted = 1;
+    title_follow(s);
     if (s->failed) { s->failed = 0; message("BOOK FILE ERROR"); }
     if (s->book && s->pending < 0 && ++s->ticks >= 120) { s->ticks = 0; remember(s); }
 }

@@ -52,6 +52,8 @@ static uint8_t mode_wanted;          /* 0x80000010: the mode stock applies when 
 static uint8_t msg_up;               /* 0x460d1e70's low byte: a message box is open */
 static int closes, events;
 extern char as_chain_text[16];
+extern uint8_t as_title_index;
+extern char as_title_fmt[12];
 #define chain_text as_chain_text
 static int shared_writes;
 static char *named;                      /* the buffer stock's name editor was opened on */
@@ -68,6 +70,7 @@ uint8_t host_rd8(uint32_t a)
     if (a >= 0x800065b8u && a < 0x800065bcu) return (uint8_t)(playing >> (8 * (3 - (a - 0x800065b8u))));
     if (a >= 0x80004f00u && a < 0x80004f00u + sizeof misc) return misc[a - 0x80004f00u];
     if (a == 0x100b14d1u) return chosen;
+    if (a == 0x80000005u) return chosen;               /* stock's other copy of the index */
     if (a == 0x460d1aefu) return arr_mode;
     if (a >= 0x460d1aecu && a < 0x460d1aefu) return 0;
     if (a == 0x460d1e73u) return msg_up;
@@ -791,6 +794,7 @@ int main(void)
     change_window = 0x46c7d384u; as_tick(0); job(); change_window = 0; as_tick(0);   /* the last run ended */
     as_setlists_open(); tap(UP); tap(UP); tap(YES); job(); as_tick(0);              /* again from the first song */
     check("a setlist from the first song: song 2 next", chosen == 6 && chain() == 7 && cs1[W(7) + 100] == s1);
+    check("the Arranger menu's title: SONG and the song's place while a setlist plays", !strcmp(as_title_fmt, "SONG %d:%s") && as_title_index == 0);
     yes_handler = 0x40058f34u;                       /* the editor's: not the main screen */
     as_key(CUE, 1);
     check("CUE + YES in the editor is not the setlist's", tap(YES) == 0);
@@ -839,6 +843,7 @@ int main(void)
     as_project_load(); as_project_new(); mark(0x10); as_tick(0);
     { int sw = stock_writes; cs1[CHG] = 1; job();
       check("a project load ends it: the next save writes the book again", stock_writes == sw + 1); }
+    check("and the title is stock's again: ARR and stock's index", !strcmp(as_title_fmt, "ARR %d:%s") && as_title_index == chosen);
     /* the first file format (no names, "ASSL") is still read */
     { struct file *f = find("/SET/PROJ/arrlists.work");
       memcpy(f->work, "ASSL", 4); memset(f->work + 24 + 16 * 16 * 18, 'X', 256);

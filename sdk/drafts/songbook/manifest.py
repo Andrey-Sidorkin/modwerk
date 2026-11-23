@@ -24,6 +24,8 @@ CHANGE_NAME = 0x400be786   # the Arranger menu's third entry: its 8-byte name, C
 MENU_NAME = 0x400be796     # the Arranger menu's fourth entry (descriptor 0x400be7e6): its 8-byte name, CHAIN
 MENU_HANDLER = 0x400be7a2  # the same entry's YES routine (stock's CHAIN list, 0x40058b38)
 MENU_ICON = 0x400be79e     # the same entry's icon (stock's CHAIN pictures, 0x400be5c2)
+MENU_TITLE_INDEX = 0x40057f48  # the Arranger menu title's `mvz.b 0x80000005` operand (stock's index)
+MENU_TITLE_FORMAT = 0x40057f54  # its `pea 0x400b47e6` operand ("ARR %d:%s")
 CHAIN_ROWS = (0x40048eb8, 0x400496e6)  # the operands of the arranger rows' `pea 0x400b4652` ("CHAIN ARR. %d", whose "%d" is shared)
 
 MODULE = Module(
@@ -50,6 +52,10 @@ MODULE = Module(
                            "the Arranger menu's CHAIN item opens the SETLSTS page instead of stock's CHAIN list"),
                  SymbolRef(MENU_ICON, 0x400be5c2, "songbook", "as_setlists_icon",
                            "the Arranger menu's CHAIN item shows the module's list icon"),
+                 SymbolRef(MENU_TITLE_INDEX, 0x80000005, "songbook", "as_title_index",
+                           "the Arranger menu's title reads the module's index byte: stock's, or a setlist song's place"),
+                 SymbolRef(MENU_TITLE_FORMAT, 0x400b47e6, "songbook", "as_title_fmt",
+                           "the Arranger menu's title format: stock's ARR %d:%s, or SONG %d:%s in a setlist"),
                  *(SymbolRef(at, 0x400b4652, "songbook", "as_chain_text",
                              "the arranger rows' chain line reads the module's text (the next song's name), not CHAIN ARR. %d")
                    for at in CHAIN_ROWS),),
