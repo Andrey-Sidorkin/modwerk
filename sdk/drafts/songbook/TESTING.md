@@ -215,6 +215,28 @@ Not run: LOAD of another project and back during a setlist (host-tested); an MKI
   card job reads the book back first and writes none of it. The host test fails on the faulty code.
 - **No resume after a power cycle** (`dc591db7`): the module comes up after stock's project load, so no load hook told
   it; fixed in `065d1bd20` (the first card job reads arrbook.work).
+- **Another project's setlists after a LOAD** (`a95a5a5a` and earlier): the module read arrbook.work and arrlists.work
+  while stock's project directory still named the last project (at `ev_banks_load`, and at `ev_banks_loaded` too), so
+  project B came up with A's setlists and A then with B's. Fixed with #1737's three LOAD fixes (`be24ed97a`): read after
+  the whole load when the project names differ, a stuck arranger run state reset before the return or a setlist's
+  first song, the closed list's cursor set.
+- **CUE left held after renaming a setlist** (`8c54d96b`): no key reaches the module in stock's name editor, so a CUE
+  released there stayed held; LEFT/RIGHT then moved songs and arrangements. Fixed in `2bf33b38b` (CUE and FUNC forgotten
+  around the editor).
+- **PROJECT > CHANGE opened SETLSTS** (`83d01931` and earlier): the page took the release of the YES that opened it, so
+  stock kept YES routed to the Arranger menu's dispatcher and every later YES ran its last item. Reproduced in ot_emu.
+  Fixed in `d23b2fe85`: the page takes a release only when it took the press.
+- **FUNC closed the SETLSTS page** (`83d01931`, `a94cdbd0`): a check on YES's route, which FUNC and CUE re-route, closed
+  it. Removed in `d80a49602`.
+- **NOW SAFE TO EJECT! after restarting a playing setlist from another song**: only switches and a stopped start closed
+  it. Fixed in `d80a49602`: every card job the module posts closes it.
+
+On `d80a49602` (package `8878af4a`), as the developer reported it: B on its own book 2, arrangement 1, with its own
+setlists; PROJECT > CHANGE opens the project list after SETLSTS was used; A left on song 2 of a setlist came back into
+it after LOAD of B and back, and PLAY went on to song 3; FUNC, FUNC + YES, FUNC + REC and FUNC + STOP on the page;
+CUE + YES and CUE + LEFT/RIGHT in BOOKS; no message on a restart from another song. After a LOAD back into a setlist,
+the main screen shows the book for a moment before the setlist. Once, in stock's name editor, the character choice
+stayed open after every key was released; not reproduced.
 
 ## Edge cases
 
@@ -239,7 +261,7 @@ Not run: LOAD of another project and back during a setlist (host-tested); an MKI
 | A setlist's songs in the open book's arrangements 7 and 8 | the setlist borrows those slots | the developer's MKI (songs at 1:6, 1:7, 1:8), `214efe0e`/`1d576a3e` | pass: intact through a power cycle (lost on `26f14530`, fixed) |
 | RELOAD during a setlist | stock refills slots 7 and 8 ~10 s into the reload | ot_emu reproduction; host test; the developer's MKI | pass on `fbb53513` and later (lost on `3382ca4f`, fixed) |
 | Power cycle during a setlist | the slots keep the copies; no load hook reaches the module | host test (both); the developer's MKI | pass on `214efe0e`: back on song 2, songs intact |
-| LOAD another project and back during a setlist | stock replaces the slots | host test | pass in the host test; not run on a unit |
+| LOAD another project and back during a setlist | stock replaces the slots; its project directory names the last project until the load is over | host test; the developer's MKI | pass on `d80a49602` (package `8878af4a`): each project with its own setlists, A back on song 2 |
 | An install while a setlist plays | fresh module memory, slots 7 and 8 not the book's | host test | pass in the host test; on the unit the install after each test ran without loss |
 | An empty song in a setlist | stock takes the chain at once when it starts an empty arrangement | host test (slots emptied) | pass in the host test |
 | Removing the module during a setlist | stock would save the copies into arrangements 7 and 8 | README asks to end the setlist first | not run: documented limitation |
