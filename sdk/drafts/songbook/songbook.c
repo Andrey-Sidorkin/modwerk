@@ -186,6 +186,7 @@ struct as_state {
                               * done; -1 none */
     uint8_t resume_cur;      /* and the song it was on */
     uint8_t rec7;            /* the record's setlist byte as this copy found it (a power cycle's: the song it was on) */
+    uint8_t boot_place;      /* a power cycle in a setlist (no load hook comes): the next card job reads arrbook.work */
     uint8_t peek;            /* CUE + YES on the main screen: the playing setlist shown while CUE is held */
     uint8_t peek_cur;        /* there, the cursor (UP/DOWN) */
     uint8_t peek_next;       /* and the song marked to come next ('>'; a further YES moves it to the cursor); 0xff none */
@@ -790,6 +791,13 @@ int as_writer(uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4)
 {
     struct as_state *s = ready();
     if (s->lists_unread) read_lists(s);                   /* installed into an open project: its setlists first */
+    if (s->boot_place) {                                  /* after a power cycle in a setlist: where it was */
+        s->boot_place = 0;
+        int b = read_place(s);
+        s->restore = (int8_t)(b > 0 ? b : -1);
+        s->restore_ticks = 0;
+        s->reloaded_slots = 1;                            /* the slots are as stock left them: a return may go now */
+    }
     if (s->lists_req) { s->lists_req = 0; s->hush = 1; }
     if (!s->sl_active && slots_are_foreign()) {           /* slots 7 and 8 hold a setlist's songs no one plays: */
         s->hush = 1;                                      /* the book back from its files first, none of it written */
@@ -1038,7 +1046,13 @@ unsigned as_modules_ready(void)
          * after another build's trial (the owner's review, #1737). */
         s->damaged = (uint8_t)(rd8(RECORD + 6) == 1);
         s->rec7 = 0;                                      /* installed, not a power cycle: no song to come back to */
-    } else { s->book = 0; ev(0xf); }
+    } else {
+        s->book = 0;
+        ev(0xf);
+        /* A power cycle in a setlist: the module comes up after stock's project load, so no load hook tells it where
+         * the project was. The next card job reads arrbook.work, and the book and the setlist come back from it. */
+        if ((s->rec7 & 0x80u) && slots_are_foreign()) s->boot_place = 1;
+    }
     remember(s);
     return 0;
 }

@@ -873,6 +873,25 @@ int main(void)
       check("and it comes back into the setlist on song 2", chosen == 6 && cs1[W(6) + 100] == s1);
       cs1[W(3) + 5] ^= 1; }
 
+    /* a power cycle in a setlist where no load hook reaches the module (it comes up after stock's load, as on the
+     * developer's MKI): arrbook.work read in the first card job, the setlist back on the song it was on */
+    change_window = 0x46c7d384u; as_tick(0); job(); change_window = 0; as_tick(0);
+    { uint8_t a7 = find("/SET/PROJ/arr07.work")->work[100], a8 = find("/SET/PROJ/arr08.work")->work[100];
+      as_setlists_open(); tap(UP); tap(UP); tap(YES); job(); as_tick(0);            /* from the first song */
+      stock_chain(); as_tick(0);                      /* song 2 */
+      cs1[W(3) + 5] ^= 1;                             /* the fingerprint stale */
+      as_host_reinstall(); as_modules_ready(); chosen = 1;   /* the power cycle, no load hook */
+      int pp = posted;
+      for (int i = 0; i < 10; ++i) as_tick(0);
+      check("after a power cycle in a setlist, a card job is posted at once", posted == pp + 1);
+      job();
+      check("it reads the book back and writes none of it", find("/SET/PROJ/arr07.work")->work[100] == a7 && find("/SET/PROJ/arr08.work")->work[100] == a8);
+      for (int i = 0; i < 400; ++i) as_tick(0);
+      check("then the setlist is started again", posted == pp + 2);
+      job(); as_tick(0);
+      check("on song 2, the song it was on", chosen == 6 && cs1[W(6) + 100] == s1 && chain() == 7);
+      cs1[W(3) + 5] ^= 1; }
+
     /* a project left in a setlist comes back into it after a load, on the song it was on */
     change_window = 0x46c7d384u; as_tick(0); job(); change_window = 0; as_tick(0);
     as_setlists_open(); tap(UP); tap(UP); tap(YES); job(); as_tick(0);              /* from the first song */
