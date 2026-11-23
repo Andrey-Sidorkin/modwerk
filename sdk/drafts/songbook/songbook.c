@@ -180,8 +180,10 @@ struct as_state {
     int8_t sl_restart;       /* YES on the page while one plays: after ending, start again from this song; -1 none */
     uint8_t sl_n, sl_cur;    /* its songs, and the one playing (or chosen) */
     uint8_t sl_list;         /* the setlist playing (0 = 1) */
-    uint8_t peek;            /* CUE + YES on the main screen: the playing setlist shown while CUE is held */
-    uint8_t peek_next;       /* there, the song marked to come next (UP/DOWN) */
+    uint8_t peek;            /* CUE + NO on the main screen: the playing setlist shown while CUE is held */
+    uint8_t peek_cur;        /* there, the cursor (UP/DOWN) */
+    uint8_t peek_next;       /* and the song marked to come next ('>'; YES moves it to the cursor) */
+    uint8_t peek_no;         /* the NO that opened it: its release is ours too */
     uint8_t cue_main;        /* CUE went down on the main screen (stock routes YES elsewhere once CUE is held) */
     uint8_t sl_cur_slot;     /* the slot that song is in (SL_A or SL_B) */
     uint8_t song_at[2];      /* the song in SL_A, SL_B; 0xff none */
@@ -1140,22 +1142,25 @@ int as_key(int code, int pressed)
         if (!pressed && s->peek) peek_close(s);               /* released: the window closes, the choice applies */
         return 0;
     }
-    if (s->peek) {                                            /* the playing setlist shown: UP/DOWN move the '>' */
-        if (code == K_UP || code == K_DOWN) {
+    if (code == K_NO && s->peek_no && !pressed) { s->peek_no = 0; return 1; }
+    if (s->peek) {                                            /* the playing setlist shown */
+        if (code == K_UP || code == K_DOWN) {                 /* the cursor only */
             if (pressed) {
-                if (code == K_UP && s->peek_next) --s->peek_next;
-                if (code == K_DOWN && s->peek_next + 1u < s->sl_n) ++s->peek_next;
+                if (code == K_UP && s->peek_cur) --s->peek_cur;
+                if (code == K_DOWN && s->peek_cur + 1u < s->sl_n) ++s->peek_cur;
             }
             return 1;
         }
-        if (code == K_YES) return 1;
+        if (code == K_YES) { if (pressed) s->peek_next = s->peek_cur; return 1; }   /* the '>' to the cursor */
+        if (code == K_NO) return 1;
     }
-    if (code == K_YES && pressed && s->cue_down && s->sl_active && !s->sl_go && !s->sl_end && !s->page
-        && s->cue_main) {                                     /* CUE + YES on the main screen: the setlist playing */
+    /* CUE + NO on the main screen while a setlist plays (stock: DISARM ALL, as NO alone still does). */
+    if (code == K_NO && pressed && s->cue_down && s->sl_active && !s->sl_go && !s->sl_end && !s->page && s->cue_main) {
         unsigned next = s->sl_cur_slot == SL_A ? 1u : 0u;
         s->peek = 1;
+        s->peek_no = 1;
+        s->peek_cur = s->sl_cur;
         s->peek_next = s->song_at[next] < s->sl_n ? s->song_at[next] : s->sl_cur;
-        s->cue_yes = 1;                                       /* YES's release is ours too */
         return 1;
     }
     if (s->page) return page_key(s, code, pressed);
@@ -1420,14 +1425,14 @@ static void draw_page(struct as_state *s, unsigned char *frame)
     }
 }
 
-/* The playing setlist over the main screen while CUE is held: the song playing inverted, the one to come next marked
- * '>'. Seven rows, kept so both are in view. */
+/* The playing setlist over the main screen while CUE is held: the cursor's row inverted, the song playing marked '*',
+ * the one to come next '>'. Seven rows, kept so the cursor is in view. */
 static void draw_peek(struct as_state *s, unsigned char *frame)
 {
     for (int y = 2; y <= 62; ++y) for (int x = 23; x <= 103; ++x) put(frame, x, y, 0);
     for (int y = 2; y <= 61; ++y) { put(frame, 23, y, 1); put(frame, 102, y, 1); put(frame, 103, y + 1, 1); }
     for (int x = 23; x <= 102; ++x) { put(frame, x, 2, 1); put(frame, x, 61, 1); put(frame, x + 1, 62, 1); }
-    unsigned n = s->sl_n, cur = s->sl_cur, nx = s->peek_next;
+    unsigned n = s->sl_n, cur = s->sl_cur, nx = s->peek_next, cs = s->peek_cur;
     char line[24], *t = put_text(line, "SETLIST ");
     t = put_num(t, s->sl_list + 1u);
     *t = 0;
@@ -1435,20 +1440,18 @@ static void draw_peek(struct as_state *s, unsigned char *frame)
     t = put_num(line, cur + 1u); *t++ = '/'; t = put_num(t, n); *t = 0;
     text(frame, 101 - 4 * (int)(t - line), 4, line);
     invert(frame, 24, 3, 101, 9);
-    unsigned lo = cur < nx ? cur : nx, hi = cur < nx ? nx : cur, top = lo;
-    if (hi >= top + PAGE_ROWS) top = hi - PAGE_ROWS + 1u;
-    if (top + PAGE_ROWS > n) top = n > PAGE_ROWS ? n - PAGE_ROWS : 0;
+    unsigned top = cs >= PAGE_ROWS ? cs - PAGE_ROWS + 1u : 0;
     for (unsigned r = 0; r < PAGE_ROWS && top + r < n; ++r) {
         unsigned k = top + r;
         const struct sl_entry *e = &s->sl_e[k];
         t = line;
-        *t++ = k == nx ? '>' : ' ';
+        *t++ = k == nx ? '>' : k == cur ? '*' : ' ';
         t = put_num(t, e->book + 1u); *t++ = '.'; t = put_num(t, e->slot + 1u); *t++ = ' ';
         for (unsigned i = 0; i < 12u && e->name[i]; ++i) *t++ = e->name[i];
         *t = 0;
         int y = 12 + 7 * (int)r;
         text(frame, 25, y, line);
-        if (k == cur) invert(frame, 24, y - 1, 101, y + 5);
+        if (k == cs) invert(frame, 24, y - 1, 101, y + 5);
     }
 }
 
