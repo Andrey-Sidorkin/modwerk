@@ -566,7 +566,6 @@ static uint32_t work_at(unsigned slot) { return WORKING + slot * BLOCK; }
 static void block_from_slot(uint8_t *to, unsigned slot) { for (uint32_t i = 0; i < BLOCK; ++i) to[i] = rd8(work_at(slot) + i); }
 static void block_to_slot(unsigned slot, const uint8_t *from) { for (uint32_t i = 0; i < BLOCK; ++i) wr8(work_at(slot) + i, from[i]); }
 
-#define SL_HALT 0xfeu   /* song_at: the slot holds the setlist's end, one HALT row */
 
 /* The chain row's text ("> SONG BRAVO", at most 13 characters): the name of what is in the slot the chain names. It
  * is the row's format string, so a % in a name becomes a space. */
@@ -591,20 +590,6 @@ static void set_chain(unsigned slot)
     wr32(CHAIN, slot);
     next_text(slot);
     post_event();
-}
-
-/* The end of a setlist into one of its two slots: "LIST END", one HALT row (type 1, no repeats, its own row as
- * target: the arranger stops there). Stock loops an arrangement past its last row, so the last song is chained to it. */
-static void put_halt(struct as_state *s, unsigned which)
-{
-    unsigned slot = which ? SL_B : SL_A;
-    static const char name[NAME_LEN] = "LIST END";
-    for (uint32_t i = 0; i < BLOCK; ++i) wr8(work_at(slot) + i, 0);
-    for (unsigned i = 0; i < NAME_LEN; ++i) wr8(work_at(slot) + i, (uint8_t)name[i]);
-    wr8(work_at(slot) + 0x13, 1);                             /* one row (the count, big-endian at +0x12) */
-    wr8(work_at(slot) + 0x14, 1);                             /* row 0: LOOP/JUMP/HALT, 0 repeats, target row 0 */
-    s->song_at[which] = SL_HALT;
-    wr8(CHANGED, (uint8_t)(rd8(CHANGED) & ~(1u << slot)));
 }
 
 /* Song k into one of the setlist's two slots: the arranger plays it from there. */
@@ -666,7 +651,6 @@ static int sl_load(struct as_state *s)
     s->song_at[1] = 0xff;
     put_song(s, 0, start);
     if (start + 1 < n) put_song(s, 1, start + 1);
-    else put_halt(s, 1);
     s->sl_active = 1;
     s->sl_go = 1;
     return 1;
@@ -1183,7 +1167,7 @@ void as_tick(void *api)
      * the song after next put into the freed slot and chained. Opening ARR > CHANGE, stopped, ends it. */
     if (s->sl_go && s->pending < 0 && select_arr(SL_A) >= 0) {
         s->sl_go = 0;
-        set_chain(SL_B);
+        if (s->song_at[1] != 0xff) set_chain(SL_B);
         if (!rd32(ARR_MODE)) arr_mode_on();
     }
     if (s->sl_active && !s->sl_go && !s->sl_end) {
@@ -1196,17 +1180,15 @@ void as_tick(void *api)
             s->sl_cur = (uint8_t)(s->sl_cur + 1u);
             s->sl_cur_slot = (uint8_t)next_slot;
             unsigned k = s->sl_cur + 1u;
-            if (k < s->sl_n) put_song(s, done, k); else put_halt(s, done);
+            if (k < s->sl_n) put_song(s, done, k); else s->song_at[done] = 0xff;
             next = done;
             next_slot = done ? SL_B : SL_A;
         }
         /* The chain to the next slot, every frame: song 2 played with its chain gone on the developer's MKI (23
          * November 2026), and a chain cleared while a song plays would loop it instead of going on. */
-        /* Stopped on the end's HALT: the last song chosen again, so the screen shows it, as at its end (stock loops an
-         * arrangement past its last row; only a HALT stops it). PLAY then plays it once more and stops on the HALT. */
-        if ((rd8(INDEX) & 7u) == next_slot && s->song_at[next] == SL_HALT && stopped() && select_arr(s->sl_cur_slot) >= 0)
-            return;                                       /* the chain is set again next frame (select clears it) */
-        if (rd32(CHAIN) != next_slot) set_chain(next_slot);
+        /* The last song has no chain: it ends as stock ends any arrangement, on its END OF ARR row. */
+        if (s->song_at[next] == 0xff) { if (rd32(CHAIN) != 0xffffffffu) { wr32(CHAIN, 0xffffffffu); post_event(); } }
+        else if (rd32(CHAIN) != next_slot) set_chain(next_slot);
         if (rd32(CHANGE_WINDOW) && stopped() && s->pending < 0) {
             s->sl_end = 1;
             if (post_write() < 0) s->sl_end = 0;            /* busy: again next frame */
