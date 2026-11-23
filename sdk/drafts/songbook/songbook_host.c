@@ -568,10 +568,10 @@ int main(void)
     job();
     check("the setlist still points at the same song, now arrangement 4", entry(0, 0)[1] == 3 && !memcmp(entry(0, 0) + 2, "INTRO", 6));
     check("and arr03/arr04 hold the swapped arrangements", find("/SET/PROJ/arr04.work")->work[100] == a3 && find("/SET/PROJ/arr03.work")->work[100] == a4);
-    choose(0);
+    choose(0); cs1[CHG] = 0;                        /* the sync before set its bits, as stock's writer does */
     as_key(CUE, 1); tap(LEFT); as_key(CUE, 0);
     check("nothing moves above arrangement 1", list[11] == 0 && cs1[CHG] == 0);
-    playing = 1; choose(3);
+    playing = 1; choose(3); cs1[CHG] = 0;
     as_key(CUE, 1); tap(LEFT); as_key(CUE, 0);
     playing = 0;
     check("while playing it says so and moves nothing", !strcmp(last_message, "STOP TO MOVE") && cs1[CHG] == 0 && cs1[W(3) + 100] == a3);
