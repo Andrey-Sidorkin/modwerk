@@ -719,8 +719,12 @@ int main(void)
     check("past the second song: the last one plays, chained to the end of the setlist", chosen == 6 && chain() == 7);
     check("the last song's chain row names the end", !strcmp(chain_text, "> LIST END"));
     check("the end: LIST END, one HALT row (type 1, target its own row)", !memcmp(&cs1[W(7)], "LIST END", 9) && cs1[W(7) + 0x12] == 0 && cs1[W(7) + 0x13] == 1 && cs1[W(7) + 0x14] == 1 && cs1[W(7) + 0x16] == 0 && cs1[W(7) + 0x17] == 0);
-    stock_chain(); as_tick(0);
+    playing = 1; stock_chain(); as_tick(0);
     check("past the last song the arranger is on the HALT, nothing more put in", chosen == 7 && cs1[W(6) + 100] == s2);
+    playing = 0; as_tick(0);
+    check("stopped there, the last song is chosen again", chosen == 6);
+    memset(&misc[0x80006694u - 0x80004f00u], 0xff, 4); as_tick(0);   /* select_arr clears the chain, as stock's does */
+    check("and chained to the end again for the next PLAY", chain() == 7 && cs1[W(6) + 100] == s2);
     change_window = 0x46c7d384u; pp = posted; as_tick(0);
     check("opening ARR > CHANGE, stopped, ends the setlist with a card job", posted == pp + 1);
     job(); as_tick(0);

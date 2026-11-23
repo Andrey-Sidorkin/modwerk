@@ -1180,6 +1180,10 @@ void as_tick(void *api)
         }
         /* The chain to the next slot, every frame: song 2 played with its chain gone on the developer's MKI (23
          * November 2026), and a chain cleared while a song plays would loop it instead of going on. */
+        /* Stopped on the end's HALT: the last song chosen again, so the screen shows it, as at its end (stock loops an
+         * arrangement past its last row; only a HALT stops it). PLAY then plays it once more and stops on the HALT. */
+        if ((rd8(INDEX) & 7u) == next_slot && s->song_at[next] == SL_HALT && stopped() && select_arr(s->sl_cur_slot) >= 0)
+            return;                                       /* the chain is set again next frame (select clears it) */
         if (rd32(CHAIN) != next_slot) set_chain(next_slot);
         if (rd32(CHANGE_WINDOW) && stopped() && s->pending < 0) {
             s->sl_end = 1;
