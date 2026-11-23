@@ -44,7 +44,8 @@
       "key:CUE+LEFT@ARR CHANGE",
       "key:CUE+RIGHT@ARR CHANGE",
       "screen:ARR MENU CHAIN",
-      "screen:SETLSTS"
+      "screen:SETLSTS",
+      "screen:ARR MENU CHANGE"
     ],
     "limitations": [
       "OS 1.40C, tested on an MKI (the developer's own checks, build f068cd608, base 0.7.13); not tested on an MKII.",

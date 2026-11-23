@@ -20,6 +20,7 @@ from remix.stock_guard import stock_guard
 
 _HERE = os.path.relpath(os.path.dirname(os.path.abspath(__file__)))
 WRITER = 0x400915ac  # stock's arrangement writer: link.w %fp,#-324 ; movem.l %d2-%d7/%a2-%a5,(%sp)
+CHANGE_NAME = 0x400be786   # the Arranger menu's third entry: its 8-byte name, CHANGE
 MENU_NAME = 0x400be796     # the Arranger menu's fourth entry (descriptor 0x400be7e6): its 8-byte name, CHAIN
 MENU_HANDLER = 0x400be7a2  # the same entry's YES routine (stock's CHAIN list, 0x40058b38)
 MENU_ICON = 0x400be79e     # the same entry's icon (stock's CHAIN pictures, 0x400be5c2)
@@ -44,6 +45,8 @@ MODULE = Module(
     # bank...), which a 14-byte poke emptied on the developer's MKI (23 November 2026).
     pokes=(Poke(CHAIN_TEXT, stock_guard(CHAIN_TEXT, 10, "6c00cbd284b54f51ea6e1d419aec898ced16d562705bb4fa71502dd730a81077"),
                 b"NEXT SONG\0", "the arranger's chain row reads NEXT SONG (then the next song's name): with SETLSTS in CHAIN's place, a chain is a setlist's next song"),
+           Poke(CHANGE_NAME, stock_guard(CHANGE_NAME, 8, "605d9de7d5f7c77f5f9df4320ac47c4d5ebe3cd971d7aa18e1438edb2a31b12b"),
+                b"BOOKS\0\0\0", "the Arranger menu's CHANGE item renamed BOOKS: its list shows the book in use (LEFT/RIGHT the others)"),
            Poke(MENU_NAME, stock_guard(MENU_NAME, 8, "78048c5f30cf2d55c3a3b36c966c7e6b6c55d55df4295ee1c9129101860b71c9"),
                 b"SETLSTS\0", "the Arranger menu's CHAIN item renamed SETLSTS (stock draws the name with %s: 7 letters)"),),
     symbol_refs=(SymbolRef(MENU_HANDLER, 0x40058b38, "songbook", "as_setlists_open",
