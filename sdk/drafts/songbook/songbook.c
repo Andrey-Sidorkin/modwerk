@@ -567,20 +567,23 @@ static void block_from_slot(uint8_t *to, unsigned slot) { for (uint32_t i = 0; i
 static void block_to_slot(unsigned slot, const uint8_t *from) { for (uint32_t i = 0; i < BLOCK; ++i) wr8(work_at(slot) + i, from[i]); }
 
 
-/* The chain row's text ("> SONG BRAVO", at most 13 characters): the name of what is in the slot the chain names. It
- * is the row's format string, so a % in a name becomes a space. */
+/* The chain row's text (">SONG BRA", at most 9 characters and its end): the name of what is in the slot the chain
+ * names. Only the 10 bytes of "CHAIN ARR." (manifest.py's poke: the loader writes even spans): the " %d" after them (0x400b465d) is stock's shared number format, used in 76
+ * places (tempo, MIDI channel, bank): writing it emptied them all (the developer's MKI, 23 November 2026). It is the
+ * row's format string, so a % in a name becomes a space. */
+#define CHAIN_TEXT_LEN 10u
 static void next_text(unsigned slot)
 {
-    char t[14];
+    char t[CHAIN_TEXT_LEN];
     unsigned k = 0;
-    t[k++] = '>'; t[k++] = ' ';
-    for (unsigned i = 0; i < NAME_LEN && k < 13; ++i) {
+    t[k++] = '>';
+    for (unsigned i = 0; i < NAME_LEN && k < CHAIN_TEXT_LEN - 1u; ++i) {
         char c = (char)rd8(work_at(slot) + i);
         if (!c) break;
         t[k++] = c == '%' ? ' ' : c;
     }
-    while (k < 14) t[k++] = 0;
-    for (unsigned i = 0; i < 14; ++i) wr8(CHAIN_TEXT + i, (uint8_t)t[i]);
+    while (k < CHAIN_TEXT_LEN) t[k++] = 0;
+    for (unsigned i = 0; i < CHAIN_TEXT_LEN; ++i) wr8(CHAIN_TEXT + i, (uint8_t)t[i]);
 }
 
 /* Stock's CHAIN to a slot, its row naming the song there, and the rows drawn again (the arranger draws them as it
@@ -1200,6 +1203,49 @@ void as_tick(void *api)
 }
 
 /* ---------------------------------------------------------------- the screen */
+/* The SETLSTS item's icon (the module's own, drawn as stock draws a menu icon, 0x400128a8): a sheet of three list
+ * lines; selected, the second line highlighted. Left normal, right selected:
+ * ...........................   ...........................
+ * ....###################....   ....###################....
+ * ....#.................#....   ....#.................#....
+ * ....#.##..#########...#....   ....#.##..#########...#....
+ * ....#.................#....   ....#.................#....
+ * ....#.................#....   ....###################....
+ * ....#.##..#########...#....   ....##..##.........####....
+ * ....#.................#....   ....###################....
+ * ....#.................#....   ....#.................#....
+ * ....#.##..#########...#....   ....#.##..#########...#....
+ * ....#.................#....   ....#.................#....
+ * ....###################....   ....###################....
+ * ...........................   ...........................
+ * Each picture is 27 columns of one word, the top row in bit 31; its mask covers the 13 rows. */
+static const uint32_t ICON_NORMAL[27] = {
+    0x00000000u, 0x00000000u, 0x00000000u, 0x00000000u, 0x7ff00000u, 0x40100000u,
+    0x52500000u, 0x52500000u, 0x40100000u, 0x40100000u, 0x52500000u, 0x52500000u,
+    0x52500000u, 0x52500000u, 0x52500000u, 0x52500000u, 0x52500000u, 0x52500000u,
+    0x52500000u, 0x40100000u, 0x40100000u, 0x40100000u, 0x7ff00000u, 0x00000000u,
+    0x00000000u, 0x00000000u, 0x00000000u,
+};
+static const uint32_t ICON_SELECTED[27] = {
+    0x00000000u, 0x00000000u, 0x00000000u, 0x00000000u, 0x7ff00000u, 0x47100000u,
+    0x55500000u, 0x55500000u, 0x47100000u, 0x47100000u, 0x55500000u, 0x55500000u,
+    0x55500000u, 0x55500000u, 0x55500000u, 0x55500000u, 0x55500000u, 0x55500000u,
+    0x55500000u, 0x47100000u, 0x47100000u, 0x47100000u, 0x7ff00000u, 0x00000000u,
+    0x00000000u, 0x00000000u, 0x00000000u,
+};
+static const uint32_t ICON_MASK[27] = {
+    0xfff80000u, 0xfff80000u, 0xfff80000u, 0xfff80000u, 0xfff80000u, 0xfff80000u, 0xfff80000u, 0xfff80000u, 0xfff80000u,
+    0xfff80000u, 0xfff80000u, 0xfff80000u, 0xfff80000u, 0xfff80000u, 0xfff80000u, 0xfff80000u, 0xfff80000u, 0xfff80000u,
+    0xfff80000u, 0xfff80000u, 0xfff80000u, 0xfff80000u, 0xfff80000u, 0xfff80000u, 0xfff80000u, 0xfff80000u, 0xfff80000u,
+};
+/* As stock's entries hold it (0x400be5c2): width, height, 1, picture, mask; then the same for the selected one. The
+ * menu entry's icon pointer is this (manifest.py's SymbolRef). */
+struct icon_pic { uint32_t width, height, depth; const uint32_t *image, *mask; };   /* 20 bytes on the ColdFire */
+const struct icon_pic as_setlists_icon[2] = {
+    {27, 13, 1, ICON_NORMAL, ICON_MASK},
+    {27, 13, 1, ICON_SELECTED, ICON_MASK},
+};
+
 /* 3x5 glyphs, row-major, 15 bits each (top row in bits 14-12): the module's own. 0-9, then B, O, K, L, I, S, T. */
 static const uint16_t GLYPH[17] = {
     0x7b6f, 0x2c97, 0x73e7, 0x72cf, 0x5bc9, 0x79cf, 0x79ef, 0x7292, 0x7bef, 0x7bcf, 0x6bae, 0x2b6a, 0x5bad,

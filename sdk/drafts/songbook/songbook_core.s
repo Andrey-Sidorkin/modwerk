@@ -500,24 +500,24 @@ read_lists:
 	.align	2
 	.type	set_chain, @function
 set_chain:
-	lea (-16,%sp),%sp
-	mov3q.l #2,%a0
+	lea (-12,%sp),%sp
+	mov3q.l #1,%a0
 	move.l %a6,-(%sp)
 	clr.b %d0
 	move.l %d2,-(%sp)
 	clr.b %d2
-	lea (12,%sp),%a1
-	move.l 28(%sp),%d1
+	lea (11,%sp),%a1
+	move.l 24(%sp),%d1
 	move.b %d0,-2147457388
 	move.b %d0,-2147457387
 	move.b %d2,-2147457386
 	move.w %d1,%d0
 	move.b %d1,-2147457385
-	move.w #15904,%d1
+	moveq #62,%d1
 	mulu.w #5652,%d0
-	move.w %d1,10(%sp)
+	move.b %d1,10(%sp)
 	move.l %d0,%a6
-	add.l #268435458,%a6
+	add.l #268435459,%a6
 .L102:
 	move.b (%a6,%a0.l),%d0
 	mvs.b %d0,%d1
@@ -528,14 +528,14 @@ set_chain:
 	cmp.l %d1,%d2
 	jeq .L114
 	move.b %d0,(%a1)+
-	moveq #13,%d0
+	moveq #9,%d0
 	cmp.l %a0,%d0
 	jne .L102
 .L100:
 	moveq #10,%d1
 	add.l %sp,%d1
 	add.l %d1,%a0
-	moveq #24,%d1
+	moveq #20,%d1
 	add.l %sp,%d1
 .L103:
 	clr.b (%a0)+
@@ -555,12 +555,12 @@ set_chain:
 	addq.l #8,%sp
 	move.l (%sp)+,%d2
 	move.l (%sp)+,%a6
-	lea (16,%sp),%sp
+	lea (12,%sp),%sp
 	rts
 .L114:
 	moveq #32,%d0
 	move.b %d0,(%a1)+
-	moveq #13,%d0
+	moveq #9,%d0
 	cmp.l %a0,%d0
 	jne .L102
 	jra .L100
@@ -5262,6 +5262,114 @@ GLYPH:
 	.word	29847
 	.word	14478
 	.word	29842
+	.globl	as_setlists_icon
+	.align	2
+	.type	as_setlists_icon, @object
+	.size	as_setlists_icon, 40
+as_setlists_icon:
+	.long	27
+	.long	13
+	.long	1
+	.long	ICON_NORMAL
+	.long	ICON_MASK
+	.long	27
+	.long	13
+	.long	1
+	.long	ICON_SELECTED
+	.long	ICON_MASK
+	.align	2
+	.type	ICON_MASK, @object
+	.size	ICON_MASK, 108
+ICON_MASK:
+	.long	-524288
+	.long	-524288
+	.long	-524288
+	.long	-524288
+	.long	-524288
+	.long	-524288
+	.long	-524288
+	.long	-524288
+	.long	-524288
+	.long	-524288
+	.long	-524288
+	.long	-524288
+	.long	-524288
+	.long	-524288
+	.long	-524288
+	.long	-524288
+	.long	-524288
+	.long	-524288
+	.long	-524288
+	.long	-524288
+	.long	-524288
+	.long	-524288
+	.long	-524288
+	.long	-524288
+	.long	-524288
+	.long	-524288
+	.long	-524288
+	.align	2
+	.type	ICON_SELECTED, @object
+	.size	ICON_SELECTED, 108
+ICON_SELECTED:
+	.long	0
+	.long	0
+	.long	0
+	.long	0
+	.long	2146435072
+	.long	1192230912
+	.long	1431306240
+	.long	1431306240
+	.long	1192230912
+	.long	1192230912
+	.long	1431306240
+	.long	1431306240
+	.long	1431306240
+	.long	1431306240
+	.long	1431306240
+	.long	1431306240
+	.long	1431306240
+	.long	1431306240
+	.long	1431306240
+	.long	1192230912
+	.long	1192230912
+	.long	1192230912
+	.long	2146435072
+	.long	0
+	.long	0
+	.long	0
+	.long	0
+	.align	2
+	.type	ICON_NORMAL, @object
+	.size	ICON_NORMAL, 108
+ICON_NORMAL:
+	.long	0
+	.long	0
+	.long	0
+	.long	0
+	.long	2146435072
+	.long	1074790400
+	.long	1380974592
+	.long	1380974592
+	.long	1074790400
+	.long	1074790400
+	.long	1380974592
+	.long	1380974592
+	.long	1380974592
+	.long	1380974592
+	.long	1380974592
+	.long	1380974592
+	.long	1380974592
+	.long	1380974592
+	.long	1380974592
+	.long	1074790400
+	.long	1074790400
+	.long	1074790400
+	.long	2146435072
+	.long	0
+	.long	0
+	.long	0
+	.long	0
 	.data
 	.align	2
 	.type	st_at, @object

@@ -49,6 +49,7 @@ static uint8_t mode_wanted;          /* 0x80000010: the mode stock applies when 
 static uint8_t msg_up;               /* 0x460d1e70's low byte: a message box is open */
 static int closes, events;
 static char chain_text[15];
+static int shared_writes;
 void host_post_event(void) { ++events; }
 static uint8_t list[16];             /* 0x400c0ba0: the CHANGE list's first row shown, then its cursor */
 static int failures, checks;
@@ -76,7 +77,8 @@ void host_wr8(uint32_t a, uint8_t v)
     if (a == 0x80000010u) { mode_wanted = v; return; }
     if (a >= 0x400c0ba0u && a < 0x400c0bb0u) { list[a - 0x400c0ba0u] = v; return; }
     if (a >= 0x80006694u && a < 0x80006698u) { misc[a - 0x80004f00u] = v; return; }   /* stock's CHAIN */
-    if (a >= 0x400b4652u && a < 0x400b4660u) { chain_text[a - 0x400b4652u] = (char)v; return; }   /* the chain row's text */
+    if (a >= 0x400b4652u && a < 0x400b465cu) { chain_text[a - 0x400b4652u] = (char)v; return; }   /* the chain row's text */
+    if (a >= 0x400b465cu && a < 0x400b4660u) { ++shared_writes; return; }   /* " %d": stock's shared format, never ours */
     fprintf(stderr, "write of 0x%08x\n", a);
 }
 
@@ -709,7 +711,7 @@ int main(void)
     { int e0 = events;
       memset(&misc[0x80006694u - 0x80004f00u], 0xff, 4); as_tick(0);
       check("and stock's arranger event is posted, so the rows are drawn with it", chain() == 6 && events == e0 + 1);
-      check("the chain row names the next song (its first 11 characters)", chain_text[0] == '>' && chain_text[1] == ' ' && !memcmp(&chain_text[2], &cs1[W(6)], 11) && chain_text[13] == 0); }
+      check("the chain row names the next song (its first 8 characters), ended within 10 bytes", chain_text[0] == '>' && !memcmp(&chain_text[1], &cs1[W(6)], 8) && chain_text[9] == 0); }
     check("a chain cleared while a song plays is set again the next frame", chain() == 6 && cs1[W(6) + 100] == s2);
     cs1[W(7) + 200] ^= 0xff;                         /* the second song edited while it plays */
     uint8_t edited = cs1[W(7) + 200];
@@ -756,6 +758,7 @@ int main(void)
     { int sw = stock_writes; cs1[CHG] = 1; job();
       check("a project load ends it: the next save writes the book again", stock_writes == sw + 1); }
 
+    check("stock's shared number format after the chain text (0x400b465d) was never written", shared_writes == 0);
     printf("%d checks, %d failed\n", checks, failures);
     return failures != 0;
 }
