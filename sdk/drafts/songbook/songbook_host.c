@@ -903,6 +903,12 @@ int main(void)
     /* Another screen in front of the Arranger menu (the PROJECT menu: its own YES): the page closes, and the BOOKS
      * list's LEFT/RIGHT, labels and CUE + YES are stock's (the developer's MKI, 24 November 2026) */
     uint32_t yes_was = yes_handler; yes_handler = 0;  /* the Arranger menu in front */
+    /* the YES that opened the page (stock's menu took its press): its release is stock's, or stock keeps YES routed to
+     * the Arranger menu and the next YES anywhere opens SETLSTS (the developer's MKI, PROJECT > CHANGE) */
+    as_setlists_open();
+    check("the release of the YES that opened the page goes to stock", as_key(YES, 0) == 0);
+    check("NO's press and release are the page's, and close it", as_key(NO, 1) == 1 && (page_draw(), ntexts == 0) && as_key(NO, 0) == 1);
+    check("a YES after that is stock's", as_key(YES, 1) == 0 && as_key(YES, 0) == 0);
     as_setlists_open(); as_tick(0);
     check("the page stays open over the Arranger menu", (page_draw(), ntexts > 0));
     yes_handler = 0x400650a0u; as_tick(0);

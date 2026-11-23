@@ -195,6 +195,7 @@ struct as_state {
     uint8_t load_read;       /* a load began: the new project's arrbook.work and arrlists.work still to be read */
     uint8_t load_posted;
     uint8_t go_tries;        /* frames stock refused a setlist's first song */
+    uint32_t page_keys[2];   /* keys whose press the SETLSTS page took: their releases are its too */
     uint8_t reloading;       /* RELOAD read the (same) project's files already: a later ev_banks_load keeps that */
     uint8_t peek;            /* CUE + YES on the main screen: the playing setlist shown while CUE is held */
     uint8_t peek_cur;        /* there, the cursor (UP/DOWN) */
@@ -1220,6 +1221,7 @@ void as_setlists_open(void)
 {
     struct as_state *s = ready();
     s->page = 1;
+    s->page_keys[0] = s->page_keys[1] = 0;
     s->page_cur = 0;
     s->page_top = 0;
     if (s->lists_unread) { lists_ready(s); return; }     /* drawn as READING until the card job has read them */
@@ -1265,8 +1267,24 @@ static void page_paste(struct as_state *s, unsigned l, unsigned n)
     }
 }
 
-/* Keys while the SETLSTS page is open: all but the transport, FUNC and CUE are the page's. */
+/* Keys while the SETLSTS page is open: all but the transport, FUNC and CUE are the page's. A release is the page's
+ * only when its press was: the YES that opened the page is released to stock, which otherwise keeps YES routed to the
+ * Arranger menu, and the next YES anywhere opened SETLSTS again (the developer's MKI, PROJECT > CHANGE, 24 November
+ * 2026). */
+static int page_key_(struct as_state *s, int code, int pressed);
 static int page_key(struct as_state *s, int code, int pressed)
+{
+    uint32_t *w = &s->page_keys[(code >> 5) & 1], bit = 1u << (code & 31);
+    if (!pressed) {
+        if (!(*w & bit)) return 0;                        /* pressed before the page opened: stock's */
+        *w &= ~bit;
+        return page_key_(s, code, 0);
+    }
+    int taken = page_key_(s, code, 1);
+    if (taken) *w |= bit;
+    return taken;
+}
+static int page_key_(struct as_state *s, int code, int pressed)
 {
     if (code == K_FUNC) return 0;
     if (code == K_STOP && !s->page_stop && !(pressed && s->func_down)) return 0;    /* STOP stays stock's */
@@ -1370,6 +1388,10 @@ int as_key(int code, int pressed)
         s->cue_yes = 1;                                       /* this YES opens; its release is ours too */
         s->peek_cur = s->sl_cur;
         s->peek_next = s->song_at[next] < s->sl_n ? s->song_at[next] : 0xff;
+        return 1;
+    }
+    if (!s->page && !pressed && (s->page_keys[(code >> 5) & 1] & (1u << (code & 31)))) {   /* the page closed */
+        s->page_keys[(code >> 5) & 1] &= ~(1u << (code & 31));   /* by this key's press: its release is the page's */
         return 1;
     }
     if (s->page) return page_key(s, code, pressed);
