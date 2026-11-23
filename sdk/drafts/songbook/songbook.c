@@ -72,7 +72,10 @@
 #define ARR_MODE_ON 0x4005200cu      /* stock's switch into arranger mode (FUNC + PATTERN's, 0x4006103e); nothing if on */
 #define LIST_TOP 0x400c0ba0u         /* ARR > CHANGE: the first row shown */
 #define LIST_CURSOR 0x400c0ba4u      /* ARR > CHANGE: the cursor's row (stock opens the list with it on the choice) */
-#define REDRAW 0x46c7c72cu          /* stock's "draw the screen again" flag (set at 0x40048f06; pattern-sample-locks sets it too) */
+#define POST_EVENT 0x40000c3cu      /* post(queue, token): an event to a task's queue */
+#define UI_QUEUE 0x460d17aeu        /* the UI task's queue */
+#define ARR_EVENT 0x400c0c41u       /* the token stock posts as the arranger takes a chain (0x4004a834): the rows drawn again */
+#define CHAIN_TEXT 0x400b4652u      /* the chain row's format (manifest.py's poke): the next song's name, written here */
 #define CHAIN 0x80006694u           /* stock's CHAIN: the slot the arranger moves to past its last row, -1 none (0x4004a7e2) */
 #define LIST_CHOICE 0x400c0ba8u      /* ARR > CHANGE: the arrangement under the cursor, as YES selects it (0x400612b4) */
 
@@ -219,6 +222,8 @@ static struct as_state *ready(void)
 /* ---------------------------------------------------------------- stock calls */
 #ifdef AS_HOST
 static int post_write(void) { return host_post_write(); }
+void host_post_event(void);
+static void post_event(void) { host_post_event(); }
 static const char *projdir(void) { return host_projdir(); }
 static void clear_arr(unsigned slot) { host_clear_arr(slot); }
 static void message(const char *t) { host_message(t); }
@@ -243,6 +248,7 @@ static int put_data(struct as_state *s, const void *p, unsigned n) { return host
 static int get_data(struct as_state *s, void *p, unsigned n) { return host_get(s->path, p, n); }
 #else
 static int post_write(void) { return ((int (*)(int))POST_WRITE)(0); }
+static void post_event(void) { ((void (*)(uint32_t, uint32_t))POST_EVENT)(UI_QUEUE, ARR_EVENT); }
 static const char *projdir(void) { return ((const char *(*)(int, int))PROJDIR)(0, 0); }
 static void clear_arr(unsigned slot) { ((void (*)(int))CLEAR_ARR)((int)slot); }
 static void message(const char *t) { ((void (*)(const char *, int))MESSAGE)(t, 0x30); }
@@ -556,12 +562,37 @@ static void block_to_slot(unsigned slot, const uint8_t *from) { for (uint32_t i 
 
 #define SL_HALT 0xfeu   /* song_at: the slot holds the setlist's end, one HALT row */
 
-/* The end of a setlist into one of its two slots: "END OF SETLIST", one HALT row (type 1, no repeats, its own row as
+/* The chain row's text ("> SONG BRAVO", at most 13 characters): the name of what is in the slot the chain names. It
+ * is the row's format string, so a % in a name becomes a space. */
+static void next_text(unsigned slot)
+{
+    char t[14];
+    unsigned k = 0;
+    t[k++] = '>'; t[k++] = ' ';
+    for (unsigned i = 0; i < NAME_LEN && k < 13; ++i) {
+        char c = (char)rd8(work_at(slot) + i);
+        if (!c) break;
+        t[k++] = c == '%' ? ' ' : c;
+    }
+    while (k < 14) t[k++] = 0;
+    for (unsigned i = 0; i < 14; ++i) wr8(CHAIN_TEXT + i, (uint8_t)t[i]);
+}
+
+/* Stock's CHAIN to a slot, its row naming the song there, and the rows drawn again (the arranger draws them as it
+ * takes a chain, before the module sets the next one: the developer's MKI showed END OF ARR, 23 November 2026). */
+static void set_chain(unsigned slot)
+{
+    wr32(CHAIN, slot);
+    next_text(slot);
+    post_event();
+}
+
+/* The end of a setlist into one of its two slots: "LIST END", one HALT row (type 1, no repeats, its own row as
  * target: the arranger stops there). Stock loops an arrangement past its last row, so the last song is chained to it. */
 static void put_halt(struct as_state *s, unsigned which)
 {
     unsigned slot = which ? SL_B : SL_A;
-    static const char name[NAME_LEN] = "END OF SETLIST";
+    static const char name[NAME_LEN] = "LIST END";
     for (uint32_t i = 0; i < BLOCK; ++i) wr8(work_at(slot) + i, 0);
     for (unsigned i = 0; i < NAME_LEN; ++i) wr8(work_at(slot) + i, (uint8_t)name[i]);
     wr8(work_at(slot) + 0x13, 1);                             /* one row (the count, big-endian at +0x12) */
@@ -1130,7 +1161,7 @@ void as_tick(void *api)
      * the song after next put into the freed slot and chained. Opening ARR > CHANGE, stopped, ends it. */
     if (s->sl_go && s->pending < 0 && select_arr(SL_A) >= 0) {
         s->sl_go = 0;
-        wr32(CHAIN, SL_B);
+        set_chain(SL_B);
         if (!rd32(ARR_MODE)) arr_mode_on();
     }
     if (s->sl_active && !s->sl_go && !s->sl_end) {
@@ -1149,10 +1180,7 @@ void as_tick(void *api)
         }
         /* The chain to the next slot, every frame: song 2 played with its chain gone on the developer's MKI (23
          * November 2026), and a chain cleared while a song plays would loop it instead of going on. */
-        if (rd32(CHAIN) != next_slot) {
-            wr32(CHAIN, next_slot);
-            wr32(REDRAW, 1);                              /* the arranger rows drawn again, with NEXT SONG */
-        }
+        if (rd32(CHAIN) != next_slot) set_chain(next_slot);
         if (rd32(CHANGE_WINDOW) && stopped() && s->pending < 0) {
             s->sl_end = 1;
             if (post_write() < 0) s->sl_end = 0;            /* busy: again next frame */

@@ -47,7 +47,9 @@ static uint8_t chosen;               /* 0x100b14d1: the arrangement chosen */
 static uint8_t arr_mode;             /* 0x460d1aec's low byte: arranger mode */
 static uint8_t mode_wanted;          /* 0x80000010: the mode stock applies when a load ends */
 static uint8_t msg_up;               /* 0x460d1e70's low byte: a message box is open */
-static int closes, redraws;
+static int closes, events;
+static char chain_text[15];
+void host_post_event(void) { ++events; }
 static uint8_t list[16];             /* 0x400c0ba0: the CHANGE list's first row shown, then its cursor */
 static int failures, checks;
 
@@ -74,7 +76,7 @@ void host_wr8(uint32_t a, uint8_t v)
     if (a == 0x80000010u) { mode_wanted = v; return; }
     if (a >= 0x400c0ba0u && a < 0x400c0bb0u) { list[a - 0x400c0ba0u] = v; return; }
     if (a >= 0x80006694u && a < 0x80006698u) { misc[a - 0x80004f00u] = v; return; }   /* stock's CHAIN */
-    if (a >= 0x46c7c72cu && a < 0x46c7c730u) { if (v) ++redraws; return; }            /* stock's redraw flag */
+    if (a >= 0x400b4652u && a < 0x400b4660u) { chain_text[a - 0x400b4652u] = (char)v; return; }   /* the chain row's text */
     fprintf(stderr, "write of 0x%08x\n", a);
 }
 
@@ -704,9 +706,10 @@ int main(void)
     check("the page opened while it plays: the cursor on the song playing (the second)", lit(100, 18) && !lit(100, 11));
     tap(NO);
     memset(&misc[0x80006694u - 0x80004f00u], 0xff, 4); as_tick(0);   /* something clears the chain mid-song */
-    { int r0 = redraws;
+    { int e0 = events;
       memset(&misc[0x80006694u - 0x80004f00u], 0xff, 4); as_tick(0);
-      check("and the screen is asked to draw again, so the rows show NEXT SONG", chain() == 6 && redraws > r0); }
+      check("and stock's arranger event is posted, so the rows are drawn with it", chain() == 6 && events == e0 + 1);
+      check("the chain row names the next song (its first 11 characters)", chain_text[0] == '>' && chain_text[1] == ' ' && !memcmp(&chain_text[2], &cs1[W(6)], 11) && chain_text[13] == 0); }
     check("a chain cleared while a song plays is set again the next frame", chain() == 6 && cs1[W(6) + 100] == s2);
     cs1[W(7) + 200] ^= 0xff;                         /* the second song edited while it plays */
     uint8_t edited = cs1[W(7) + 200];
@@ -714,7 +717,8 @@ int main(void)
       check("a save while the setlist plays writes none of the book's files", writes == w && find("/SET/PROJ/arr07.work")->work[100] == b7); }
     stock_chain(); as_tick(0);
     check("past the second song: the last one plays, chained to the end of the setlist", chosen == 6 && chain() == 7);
-    check("the end: END OF SETLIST, one HALT row (type 1, target its own row)", !memcmp(&cs1[W(7)], "END OF SETLIST", 14) && cs1[W(7) + 0x12] == 0 && cs1[W(7) + 0x13] == 1 && cs1[W(7) + 0x14] == 1 && cs1[W(7) + 0x16] == 0 && cs1[W(7) + 0x17] == 0);
+    check("the last song's chain row names the end", !strcmp(chain_text, "> LIST END"));
+    check("the end: LIST END, one HALT row (type 1, target its own row)", !memcmp(&cs1[W(7)], "LIST END", 9) && cs1[W(7) + 0x12] == 0 && cs1[W(7) + 0x13] == 1 && cs1[W(7) + 0x14] == 1 && cs1[W(7) + 0x16] == 0 && cs1[W(7) + 0x17] == 0);
     stock_chain(); as_tick(0);
     check("past the last song the arranger is on the HALT, nothing more put in", chosen == 7 && cs1[W(6) + 100] == s2);
     change_window = 0x46c7d384u; pp = posted; as_tick(0);
@@ -734,7 +738,7 @@ int main(void)
     fail_read_path = 0;
     /* starting from the last song: nothing chained */
     as_setlists_open(); tap(DOWN); tap(DOWN); tap(YES); job(); as_tick(0);
-    check("from the last song: it, then the end of the setlist", chosen == 6 && cs1[W(6) + 100] == s2 && chain() == 7 && !memcmp(&cs1[W(7)], "END OF SETLIST", 14));
+    check("from the last song: it, then the end of the setlist", chosen == 6 && cs1[W(6) + 100] == s2 && chain() == 7 && !memcmp(&cs1[W(7)], "LIST END", 9));
     { int sw = stock_writes; job();
       check("while it plays, the next save leaves the book's files alone", stock_writes == sw); }
     as_project_load(); as_project_new(); mark(0x10); as_tick(0);
