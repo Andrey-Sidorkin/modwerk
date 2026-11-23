@@ -769,7 +769,7 @@ int main(void)
     change_window = 0;
     /* installed again while a setlist plays: slots 7 and 8 hold its songs; nothing of them is written, the book read */
     as_setlists_open(); tap(UP); tap(UP); tap(YES); job(); as_tick(0);
-    check("a setlist playing again: its songs in slots 7 and 8, the record says so", cs1[W(6) + 100] == s0 && rec[7] == 1);
+    check("a setlist playing again: its songs in slots 7 and 8, the record says so", cs1[W(6) + 100] == s0 && (rec[7] & 0x80));
     as_host_reinstall(); as_modules_ready();
     { int w = writes, sw = stock_writes, pp = posted; as_tick(0);
       check("installed again: a card job is posted to read the book back", posted == pp + 1);
@@ -844,6 +844,19 @@ int main(void)
       check("then, the load over, the setlist starts again on song 2", posted == pp + 1);
       job(); as_tick(0);
       check("song 2 in slot 7 from its file, song 3 chained", chosen == 6 && cs1[W(6) + 100] == s1 && chain() == 7); }
+
+    /* a power cycle in a setlist, no sync since it started: it comes back on the song it was on (the record's) */
+    change_window = 0x46c7d384u; as_tick(0); job(); change_window = 0; as_tick(0);
+    as_setlists_open(); tap(UP); tap(UP); tap(YES); job(); as_tick(0);              /* from the first song */
+    check("starting a setlist writes it into arrbook.work at once", find("/SET/PROJ/arrbook.work")->work[22] == 0x80);
+    stock_chain(); as_tick(0);                        /* song 2 plays; no sync */
+    check("the record knows song 2", rec[7] == 0x81);
+    as_host_reinstall(); mark(0x10); as_modules_ready();   /* a power cycle: fresh memory, stock's book 1 in the slots */
+    as_project_load(); as_project_new(); mark(0x10); as_project_loaded(); chosen = 0;
+    { int pp = posted; for (int i = 0; i < 400; ++i) as_tick(0);
+      check("after the power cycle's load the setlist starts again", posted == pp + 1); }
+    job(); as_tick(0);
+    check("on song 2, the song it was on", chosen == 6 && cs1[W(6) + 100] == s1 && chain() == 7);
 
     /* a project left in a setlist comes back into it after a load, on the song it was on */
     change_window = 0x46c7d384u; as_tick(0); job(); change_window = 0; as_tick(0);

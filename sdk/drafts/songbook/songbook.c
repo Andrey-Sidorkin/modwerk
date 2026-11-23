@@ -185,6 +185,7 @@ struct as_state {
     int8_t resume;           /* a load of a project left in a setlist: that setlist (0 = 1), started again once the load is
                               * done; -1 none */
     uint8_t resume_cur;      /* and the song it was on */
+    uint8_t rec7;            /* the record's setlist byte as this copy found it (a power cycle's: the song it was on) */
     uint8_t peek;            /* CUE + YES on the main screen: the playing setlist shown while CUE is held */
     uint8_t peek_cur;        /* there, the cursor (UP/DOWN) */
     uint8_t peek_next;       /* and the song marked to come next ('>'; a further YES moves it to the cursor); 0xff none */
@@ -238,6 +239,7 @@ static struct as_state *ready(void)
     s->sl_req = -1;
     s->sl_restart = -1;
     s->resume = -1;
+    s->rec7 = rd8(RECORD + 7);                           /* before this copy writes the record: a power cycle's song */
     s->lists_unread = 1;                                 /* a project may be open already: its setlists not read */
     s->mode_pref = rd32(ARR_MODE) ? 1 : 0;
     s->since_hook = 4000;
@@ -385,6 +387,10 @@ static int read_place(struct as_state *s)
     s->mode_on = s->place[21] == 1;
     s->resume = (int8_t)(s->place[22] & 0x80u ? s->place[22] & 15u : -1);
     s->resume_cur = (uint8_t)(s->place[23] & 15u);
+    /* After a power cycle the record knows the song it was on: the file only the song a setlist started on (a song
+     * change writes no file while playing). */
+    if (s->resume >= 0 && (s->rec7 & 0x80u)) s->resume_cur = (uint8_t)(s->rec7 & 15u);
+    s->rec7 = 0;
     s->mode_pref = s->mode_on;
     return s->place[4];
 }
@@ -405,7 +411,8 @@ static void remember(struct as_state *s)
     wr8(RECORD + 4, s->book);
     wr8(RECORD + 5, s->backup);
     wr8(RECORD + 6, s->damaged);                         /* a book read only in part: kept through a reload (#1737) */
-    wr8(RECORD + 7, (uint8_t)(s->sl_active || s->reread));   /* slots 7 and 8 hold setlist songs */
+    /* Slots 7 and 8 hold setlist songs (bit 7), and the song playing (bits 0-3): a power cycle comes back to it. */
+    wr8(RECORD + 7, (uint8_t)(s->sl_active ? 0x80u | (s->sl_cur & 15u) : s->reread ? 0x80u : 0u));
     wr32(RECORD + 8, slots_sum());
 }
 
@@ -848,7 +855,10 @@ int as_writer(uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4)
     sl_names(s);                                          /* the setlists: names as the book in the slots has them */
     write_lists(s);
     write_place(s);                                       /* where the project is: a load comes back here */
-    if (s->sl_req >= 0 && rc >= 0 && !s->damaged && !sl_load(s)) s->failed = 1;   /* YES on the SETLSTS page */
+    if (s->sl_req >= 0 && rc >= 0 && !s->damaged) {      /* YES on the SETLSTS page */
+        if (!sl_load(s)) s->failed = 1;
+        else write_place(s);                              /* the project says it is in this setlist, from its start */
+    }
     s->sl_req = -1;
     remember(s);
     return rc;
@@ -1018,7 +1028,8 @@ unsigned as_modules_ready(void)
          * after another build's trial (the owner's review, #1737). */
         s->damaged = (uint8_t)(rd8(RECORD + 6) == 1);
         /* A setlist was playing: slots 7 and 8 are its songs. Nothing of them is written; the book is read again. */
-        if (rd8(RECORD + 7) == 1) s->reread = 1;
+        if (rd8(RECORD + 7) & 0x80u) s->reread = 1;
+        s->rec7 = 0;                                      /* installed, not a power cycle: no song to come back to */
     } else { s->book = 0; ev(0xf); }
     remember(s);
     return 0;
@@ -1386,6 +1397,7 @@ void as_tick(void *api)
             unsigned done = next ^ 1u;
             take_back(s, done);
             s->sl_cur = s->song_at[next];                 /* the next one, or the one chosen with CUE + YES */
+            wr8(RECORD + 7, (uint8_t)(0x80u | (s->sl_cur & 15u)));   /* a power cycle comes back to it */
             s->sl_cur_slot = (uint8_t)next_slot;
             unsigned k = s->sl_cur + 1u;
             if (k < s->sl_n) put_song(s, done, k); else s->song_at[done] = 0xff;
