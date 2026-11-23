@@ -39,6 +39,7 @@
 #define K_DOWN 0x20
 #define K_PLAY 0x28
 #define K_STOP 0x27
+#define K_REC 0x29
 
 #define BOOKS 16u
 #define SLOTS 8u
@@ -77,6 +78,8 @@
 #define ARR_EVENT 0x400c0c41u       /* the token stock posts as the arranger takes a chain (0x4004a834): the rows drawn again */
 #define CHAIN_TEXT 0x400b4652u      /* the chain row's format (manifest.py's poke): the next song's name, written here */
 #define CHAIN 0x80006694u           /* stock's CHAIN: the slot the arranger moves to past its last row, -1 none (0x4004a7e2) */
+#define KEYS 0x46c7d8deu            /* each key code's routed press handler, 0x18 apart (as arr-rows reads it) */
+#define MAIN_YES 0x4005e4c8u        /* YES's handler on the main screen (measured under ot_emu: menu 0x4003395c, editor 0x40058f34) */
 #define LIST_CHOICE 0x400c0ba8u      /* ARR > CHANGE: the arrangement under the cursor, as YES selects it (0x400612b4) */
 
 #define REC_MAGIC 0x41534231u        /* "ASB1" */
@@ -165,6 +168,9 @@ struct as_state {
     uint8_t page;            /* the SETLSTS page is open (the Arranger menu's CHAIN item, replaced) */
     uint8_t page_cur, page_top;  /* its cursor (a song of the open setlist) and the first song shown */
     uint8_t page_play;       /* a FUNC + PLAY taken on the page: PLAY's release is ours too */
+    uint8_t page_stop;       /* a FUNC + STOP taken on the page: STOP's release is ours too */
+    uint8_t clip_n;          /* songs copied on the page (FUNC + REC one, CUE + FUNC + REC the setlist), 0 none */
+    struct sl_entry clip[LIST_LEN];
     /* A setlist playing: its songs in the module's memory, two of them at a time in slots 7 and 8 (SL_A, SL_B), the
      * next one chained by stock's own CHAIN. The book's other slots stay; its files are not written meanwhile. */
     int8_t sl_req;           /* YES on the page: the song to start from, for the card job; -1 none */
@@ -174,6 +180,9 @@ struct as_state {
     int8_t sl_restart;       /* YES on the page while one plays: after ending, start again from this song; -1 none */
     uint8_t sl_n, sl_cur;    /* its songs, and the one playing (or chosen) */
     uint8_t sl_list;         /* the setlist playing (0 = 1) */
+    uint8_t peek;            /* CUE + YES on the main screen: the playing setlist shown while CUE is held */
+    uint8_t peek_next;       /* there, the song marked to come next (UP/DOWN) */
+    uint8_t cue_main;        /* CUE went down on the main screen (stock routes YES elsewhere once CUE is held) */
     uint8_t sl_cur_slot;     /* the slot that song is in (SL_A or SL_B) */
     uint8_t song_at[2];      /* the song in SL_A, SL_B; 0xff none */
     uint16_t sl_edited;      /* songs changed while they played: written to their own files at the end */
@@ -1020,10 +1029,45 @@ void as_setlists_open(void)
 }
 
 
+/* FUNC + REC on the page: the song under the cursor copied, or with CUE held the whole setlist shown. */
+static void page_copy(struct as_state *s, unsigned l, unsigned n)
+{
+    char *t = s->msg;
+    if (!n) return;
+    if (s->cue_down) {
+        for (unsigned i = 0; i < n; ++i) entry_copy(&s->clip[i], &s->lists.e[l][i]);
+        s->clip_n = (uint8_t)n;
+        t = put_text(t, "COPIED LIST "); t = put_num(t, l + 1u);
+    } else {
+        entry_copy(&s->clip[0], &s->lists.e[l][s->page_cur]);
+        s->clip_n = 1;
+        t = put_text(t, "COPIED SONG");
+    }
+    *t = 0;
+    message(s->msg);
+}
+
+/* FUNC + STOP on the page: what was copied, after the cursor (at the top of an empty setlist), as far as it fits. */
+static void page_paste(struct as_state *s, unsigned l, unsigned n)
+{
+    if (!s->clip_n) return;
+    unsigned at = n ? s->page_cur + 1u : 0u, room = LIST_LEN - n, k = s->clip_n < room ? s->clip_n : room;
+    for (unsigned i = n; i-- > at;) entry_copy(&s->lists.e[l][i + k], &s->lists.e[l][i]);   /* make room */
+    for (unsigned i = 0; i < k; ++i) entry_copy(&s->lists.e[l][at + i], &s->clip[i]);
+    s->lists.count[l] = (uint8_t)(n + k);
+    if (k) { s->lists_dirty = 1; s->page_cur = (uint8_t)(at + k - 1u); }
+    if (k < s->clip_n) {
+        char *t = put_text(s->msg, "LIST "); t = put_num(t, l + 1u); t = put_text(t, " IS FULL"); *t = 0;
+        message(s->msg);
+    }
+}
+
 /* Keys while the SETLSTS page is open: all but the transport, FUNC and CUE are the page's. */
 static int page_key(struct as_state *s, int code, int pressed)
 {
-    if (code == K_FUNC || code == K_STOP) return 0;
+    if (code == K_FUNC) return 0;
+    if (code == K_STOP && !s->page_stop && !(pressed && s->func_down)) return 0;    /* STOP stays stock's */
+    if (code == K_STOP && !pressed) { s->page_stop = 0; return 1; }
     if (code == K_PLAY && !s->page_play && !(pressed && s->func_down)) return 0;  /* PLAY stays stock's */
     if (!pressed) { if (code == K_PLAY) s->page_play = 0; return 1; }
     unsigned l = s->lists.open, n = s->lists.count[l];
@@ -1043,6 +1087,12 @@ static int page_key(struct as_state *s, int code, int pressed)
         }
         break;
     }
+    case K_REC: if (s->func_down) page_copy(s, l, n); break;
+    case K_STOP:                                               /* FUNC + STOP: paste */
+        if (s->page_stop) break;
+        s->page_stop = 1;
+        page_paste(s, l, n);
+        break;
     case K_PLAY:                                               /* FUNC + PLAY: the song out of the setlist */
         if (s->page_play) break;
         s->page_play = 1;
@@ -1067,12 +1117,47 @@ static int page_key(struct as_state *s, int code, int pressed)
     return 1;
 }
 
+/* CUE released over the playing setlist: the window closes; a different song marked to come next goes into the free
+ * slot, chained, and the setlist goes on in order after it. */
+static void peek_close(struct as_state *s)
+{
+    s->peek = 0;
+    if (!s->sl_active || s->sl_end) return;
+    unsigned next = s->sl_cur_slot == SL_A ? 1u : 0u, k = s->peek_next;
+    if (k >= s->sl_n || s->song_at[next] == k) return;
+    put_song(s, next, k);
+    set_chain(next ? SL_B : SL_A);
+}
+
 int as_key(int code, int pressed)
 {
     struct as_state *s = ready();
     if (code == K_FUNC) s->func_down = (uint8_t)!!pressed;
     if (code == K_PATTERN && pressed && s->func_down) { s->mode_key = 1; s->mode_key_ticks = 0; }  /* stock's again */
-    if (code == K_CUE) { s->cue_down = (uint8_t)!!pressed; return 0; }
+    if (code == K_CUE) {
+        s->cue_down = (uint8_t)!!pressed;
+        if (pressed) s->cue_main = rd32(KEYS + K_YES * 0x18u) == MAIN_YES;   /* before stock's CUE layer routes YES */
+        if (!pressed && s->peek) peek_close(s);               /* released: the window closes, the choice applies */
+        return 0;
+    }
+    if (s->peek) {                                            /* the playing setlist shown: UP/DOWN move the '>' */
+        if (code == K_UP || code == K_DOWN) {
+            if (pressed) {
+                if (code == K_UP && s->peek_next) --s->peek_next;
+                if (code == K_DOWN && s->peek_next + 1u < s->sl_n) ++s->peek_next;
+            }
+            return 1;
+        }
+        if (code == K_YES) return 1;
+    }
+    if (code == K_YES && pressed && s->cue_down && s->sl_active && !s->sl_go && !s->sl_end && !s->page
+        && s->cue_main) {                                     /* CUE + YES on the main screen: the setlist playing */
+        unsigned next = s->sl_cur_slot == SL_A ? 1u : 0u;
+        s->peek = 1;
+        s->peek_next = s->song_at[next] < s->sl_n ? s->song_at[next] : s->sl_cur;
+        s->cue_yes = 1;                                       /* YES's release is ours too */
+        return 1;
+    }
     if (s->page) return page_key(s, code, pressed);
     if (code == K_YES && (s->cue_yes || (s->cue_down && rd32(CHANGE_WINDOW)))) {
         if (!pressed) { s->cue_yes = 0; return 1; }           /* its release is ours too */
@@ -1177,10 +1262,10 @@ void as_tick(void *api)
         unsigned next = s->sl_cur_slot == SL_A ? 1u : 0u, next_slot = next ? SL_B : SL_A;
         /* Stock moved to the next song (its index is the next slot): the finished one's edits kept, the song after
          * it (or the end) into the freed slot. Decided from the index alone, before the chain is set again below. */
-        if ((rd8(INDEX) & 7u) == next_slot && s->song_at[next] == s->sl_cur + 1u) {
+        if ((rd8(INDEX) & 7u) == next_slot && s->song_at[next] < s->sl_n) {
             unsigned done = next ^ 1u;
             take_back(s, done);
-            s->sl_cur = (uint8_t)(s->sl_cur + 1u);
+            s->sl_cur = s->song_at[next];                 /* the next one, or the one chosen with CUE + YES */
             s->sl_cur_slot = (uint8_t)next_slot;
             unsigned k = s->sl_cur + 1u;
             if (k < s->sl_n) put_song(s, done, k); else s->song_at[done] = 0xff;
@@ -1335,9 +1420,42 @@ static void draw_page(struct as_state *s, unsigned char *frame)
     }
 }
 
+/* The playing setlist over the main screen while CUE is held: the song playing inverted, the one to come next marked
+ * '>'. Seven rows, kept so both are in view. */
+static void draw_peek(struct as_state *s, unsigned char *frame)
+{
+    for (int y = 2; y <= 62; ++y) for (int x = 23; x <= 103; ++x) put(frame, x, y, 0);
+    for (int y = 2; y <= 61; ++y) { put(frame, 23, y, 1); put(frame, 102, y, 1); put(frame, 103, y + 1, 1); }
+    for (int x = 23; x <= 102; ++x) { put(frame, x, 2, 1); put(frame, x, 61, 1); put(frame, x + 1, 62, 1); }
+    unsigned n = s->sl_n, cur = s->sl_cur, nx = s->peek_next;
+    char line[24], *t = put_text(line, "SETLIST ");
+    t = put_num(t, s->sl_list + 1u);
+    *t = 0;
+    text(frame, 25, 4, line);
+    t = put_num(line, cur + 1u); *t++ = '/'; t = put_num(t, n); *t = 0;
+    text(frame, 101 - 4 * (int)(t - line), 4, line);
+    invert(frame, 24, 3, 101, 9);
+    unsigned lo = cur < nx ? cur : nx, hi = cur < nx ? nx : cur, top = lo;
+    if (hi >= top + PAGE_ROWS) top = hi - PAGE_ROWS + 1u;
+    if (top + PAGE_ROWS > n) top = n > PAGE_ROWS ? n - PAGE_ROWS : 0;
+    for (unsigned r = 0; r < PAGE_ROWS && top + r < n; ++r) {
+        unsigned k = top + r;
+        const struct sl_entry *e = &s->sl_e[k];
+        t = line;
+        *t++ = k == nx ? '>' : ' ';
+        t = put_num(t, e->book + 1u); *t++ = '.'; t = put_num(t, e->slot + 1u); *t++ = ' ';
+        for (unsigned i = 0; i < 12u && e->name[i]; ++i) *t++ = e->name[i];
+        *t = 0;
+        int y = 12 + 7 * (int)r;
+        text(frame, 25, y, line);
+        if (k == cur) invert(frame, 24, y - 1, 101, y + 5);
+    }
+}
+
 void as_draw(unsigned char *frame)
 {
     struct as_state *s = ready();
+    if (s->peek) { draw_peek(s, frame); return; }
     if (s->page) { draw_page(s, frame); return; }
     if (!rd32(CHANGE_WINDOW)) return;
     static const uint8_t book[4] = {G_B, G_O, G_O, G_K}, list[4] = {G_L, G_I, G_S, G_T};

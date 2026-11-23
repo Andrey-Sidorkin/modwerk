@@ -32,6 +32,8 @@ void as_host_back_memory(void);
 #define DOWN 0x20
 #define PLAY 0x28
 #define FUNC 0x2d
+#define REC 0x29
+#define STOP 0x27
 #define BLOCK 5652u
 #define SLOTS 8u
 #define W(n) (4u + (n) * BLOCK)                  /* offsets into cs1 */
@@ -42,7 +44,7 @@ void as_host_back_memory(void);
 static uint8_t cs1[0x16200];             /* 0x10000000 .. : the slots, their flags, the changed mask */
 static uint8_t rec[20];                  /* 0x100f8f10 */
 static uint8_t misc[0x2000];             /* 0x80004f00 .. */
-static uint32_t change_window, playing;
+static uint32_t change_window, playing, yes_handler;
 static uint8_t chosen;               /* 0x100b14d1: the arrangement chosen */
 static uint8_t arr_mode;             /* 0x460d1aec's low byte: arranger mode */
 static uint8_t mode_wanted;          /* 0x80000010: the mode stock applies when a load ends */
@@ -67,6 +69,8 @@ uint8_t host_rd8(uint32_t a)
     if (a == 0x460d1e73u) return msg_up;
     if (a >= 0x460d1e70u && a < 0x460d1e73u) return 0;
     if (a >= 0x400c0ba0u && a < 0x400c0bb0u) return list[a - 0x400c0ba0u];
+    if (a >= 0x46c7d8deu + 0x31u * 0x18u && a < 0x46c7d8deu + 0x31u * 0x18u + 4u)   /* YES's routed handler */
+        return (uint8_t)(yes_handler >> (8 * (3 - (a - (0x46c7d8deu + 0x31u * 0x18u)))));
     fprintf(stderr, "read of 0x%08x\n", a);
     return 0;
 }
@@ -646,6 +650,22 @@ int main(void)
     for (int i = 0; i < 5; ++i) tap(DOWN);
     page_draw();
     check("the cursor stops at the last song", lit(100, 25) && !lit(100, 32));
+    tap(UP); tap(UP); tap(DOWN);                     /* the cursor on song 2 of 3 */
+    as_key(FUNC, 1); tap(REC); as_key(FUNC, 0);
+    check("FUNC + REC copies the song under the cursor", !strcmp(last_message, "COPIED SONG"));
+    check("STOP alone stays the transport's", tap(STOP) == 0);
+    as_key(FUNC, 1);
+    check("FUNC + STOP is the page's", tap(STOP) == 1);
+    as_key(FUNC, 0); job();
+    check("and pastes it after the cursor: four songs, the copy third", lists_count(0) == 4 && entry(0, 2)[0] == entry(0, 1)[0] && entry(0, 2)[1] == entry(0, 1)[1]);
+    as_key(FUNC, 1); tap(PLAY); as_key(FUNC, 0); job();   /* the copy out again */
+    check("FUNC + PLAY takes the pasted copy out again", lists_count(0) == 3);
+    as_key(CUE, 1); as_key(FUNC, 1); tap(REC); as_key(FUNC, 0); as_key(CUE, 0);
+    check("CUE + FUNC + REC copies the whole setlist", !strcmp(last_message, "COPIED LIST 1"));
+    tap(RIGHT); as_key(FUNC, 1); tap(STOP); as_key(FUNC, 0); job();
+    check("FUNC + STOP on setlist 2 pastes all three", lists_count(1) == 3 && entry(1, 0)[1] == entry(0, 0)[1] && entry(1, 2)[1] == entry(0, 2)[1]);
+    for (int i = 0; i < 3; ++i) { as_key(FUNC, 1); tap(PLAY); as_key(FUNC, 0); }   /* setlist 2 empty again */
+    job(); tap(LEFT);
     tap(RIGHT); page_draw();
     check("RIGHT shows setlist 2, empty", !strcmp(text_at(4), "SETLIST 2") && !strcmp(text_at(12), "EMPTY"));
     tap(NO); page_draw();
@@ -754,6 +774,28 @@ int main(void)
     check("from the last song: it alone, nothing chained", chosen == 6 && cs1[W(6) + 100] == s2 && chain() == 0xffffffffu);
     { int sw = stock_writes; job();
       check("while it plays, the next save leaves the book's files alone", stock_writes == sw); }
+    /* CUE + YES on the main screen: the setlist playing, the next song chosen while CUE is held */
+    change_window = 0x46c7d384u; as_tick(0); job(); change_window = 0; as_tick(0);   /* the last run ended */
+    as_setlists_open(); tap(UP); tap(UP); tap(YES); job(); as_tick(0);              /* again from the first song */
+    check("a setlist from the first song: song 2 next", chosen == 6 && chain() == 7 && cs1[W(7) + 100] == s1);
+    yes_handler = 0x40058f34u;                       /* the editor's: not the main screen */
+    as_key(CUE, 1);
+    check("CUE + YES in the editor is not the setlist's", tap(YES) == 0);
+    as_key(CUE, 0);
+    yes_handler = 0x4005e4c8u;                       /* the main screen's */
+    as_key(CUE, 1);
+    check("CUE + YES on the main screen opens the playing setlist", tap(YES) == 1);
+    page_draw();
+    check("its title, the song playing inverted, the next marked >", !strcmp(text_at(4), "SETLIST 1") && !strcmp(texts[1].t, "1/3") && lit(100, 11) && text_at(19)[0] == '>' && text_at(12)[0] == ' ');
+    check("DOWN while CUE is held is the window's", tap(DOWN) == 1);
+    page_draw();
+    check("and moves the > to the third song", text_at(26)[0] == '>' && text_at(19)[0] == ' ');
+    as_key(CUE, 0); page_draw();
+    check("releasing CUE closes it and puts the third song next, chained", ntexts == 0 && cs1[W(7) + 100] == s2 && chain() == 7);
+    stock_chain(); as_tick(0);
+    check("past the first song the third plays, and it is the last: nothing chained", chosen == 7 && chain() == 0xffffffffu);
+    yes_handler = 0;
+
     as_project_load(); as_project_new(); mark(0x10); as_tick(0);
     { int sw = stock_writes; cs1[CHG] = 1; job();
       check("a project load ends it: the next save writes the book again", stock_writes == sw + 1); }
