@@ -942,12 +942,19 @@ int main(void)
     job();                                            /* a sync in B */
     check("no file of B gets A's setlists or place", !find("/SET/PROJB/arrlists.work") && !(find("/SET/PROJB/arrbook.work") && find("/SET/PROJB/arrbook.work")->work[22]));
     job();                                            /* LOAD's save of project B */
+    { uint32_t y = yes_handler; yes_handler = 0x4005e4c8u; page_draw();
+      check("in B: no setlist shown in the Part box", text_at(34)[0] == 0);
+      yes_handler = y; }
     strcpy(job_name, "PROJ");                         /* back to A */
     as_project_load(); as_project_loaded(); as_project_new(); mark(0x10); chosen = 0;
     host_dir = "/SET/PROJ"; strcpy(cur_name, "PROJ");
     arr_state = 2;                                    /* the arranger's run state left set after the load */
     { int pp = posted; for (int i = 0; i < 400; ++i) as_tick(0);   /* the module's job reads A's files */
-      job(); for (int i = 0; i < 400; ++i) as_tick(0);
+      job(); as_tick(0);
+      { uint32_t y = yes_handler; yes_handler = 0x4005e4c8u; page_draw();
+        check("back in A, before its setlist starts: the setlist already in the Part box, not the book", text_at(34)[0] != 0 && !strcmp(text_at(50), "2/3"));
+        yes_handler = y; }
+      for (int i = 0; i < 400; ++i) as_tick(0);
       check("back in project A: its setlist started again", posted == pp + 2); }
     job(); for (int i = 0; i < 60; ++i) as_tick(0);
     check("on song 2, A's own, the run state reset once", chosen == 6 && cs1[W(6) + 100] == s1 && resets == 1 && arr_state == 0);

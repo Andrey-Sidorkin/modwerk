@@ -1755,15 +1755,15 @@ static void draw_peek(struct as_state *s, unsigned char *frame)
  * covered): the Part box (x 11-40, white on black) its name over two lines of 7 (broken at a space where it can; "LIST n"
  * without one), and the pattern line under it (x 10-41) the setlist sign (a vertical line and three rules) and the
  * song's place ("2/6"). */
-static void draw_mark(struct as_state *s, unsigned char *frame)
+static void draw_mark(struct as_state *s, unsigned char *frame, unsigned list, unsigned cur, unsigned count)
 {
     char a[8], b[8], *t;
-    const char *n = s->lists.name[s->sl_list];
+    const char *n = s->lists.name[list];
     unsigned k = 0;
     while (k < 15u && n[k]) ++k;
     while (k && n[k - 1] == ' ') --k;
     a[0] = b[0] = 0;
-    if (!k) { t = put_text(a, "LIST "); t = put_num(t, s->sl_list + 1u); *t = 0; }
+    if (!k) { t = put_text(a, "LIST "); t = put_num(t, list + 1u); *t = 0; }
     else {
         unsigned cut = k <= 7u ? k : 7u;
         if (k > 7u) for (unsigned i = 7u; i > 0; --i)        /* at a space, when the rest then fits the second line */
@@ -1781,9 +1781,9 @@ static void draw_mark(struct as_state *s, unsigned char *frame)
     if (b[0]) text(frame, 12, 41, b);
     invert(frame, 11, 33, 40, 46);
     char line[8];
-    t = put_num(line, s->sl_cur + 1u);
+    t = put_num(line, cur + 1u);
     *t++ = '/';
-    t = put_num(t, s->sl_n);
+    t = put_num(t, count);
     *t = 0;
     for (int y = 48; y <= 56; ++y) for (int x = 10; x <= 41; ++x) put(frame, x, y, 0);
     for (int y = 50; y <= 54; ++y) put(frame, 12, y, 1);                             /* the sign's vertical line */
@@ -1795,8 +1795,16 @@ void as_draw(unsigned char *frame)
 {
     struct as_state *s = ready();
     if (s->peek) { draw_peek(s, frame); return; }
-    if (s->sl_active && !s->sl_go && !s->page && !rd32(CHANGE_WINDOW) && rd32(KEYS + K_YES * 0x18u) == MAIN_YES)
-        draw_mark(s, frame);
+    if (!s->page && !rd32(CHANGE_WINDOW) && rd32(KEYS + K_YES * 0x18u) == MAIN_YES) {
+        if (s->sl_active && !s->sl_go) draw_mark(s, frame, s->sl_list, s->sl_cur, s->sl_n);
+        /* A project going back into a setlist after a load: shown from the start, not the book first and then the
+         * setlist (the developer's MKI, 24 November 2026). */
+        else if (!s->sl_active && s->resume >= 0 && !s->lists_unread && s->resume_cur < s->lists.count[s->resume])
+            draw_mark(s, frame, (unsigned)s->resume, s->resume_cur, s->lists.count[s->resume]);
+        else if (!s->sl_active && s->sl_req >= 0 && (unsigned)s->sl_req < s->lists.count[s->lists.open])   /* posted */
+            draw_mark(s, frame, s->lists.open, (unsigned)s->sl_req, s->lists.count[s->lists.open]);
+        else if (s->sl_go) draw_mark(s, frame, s->sl_list, s->sl_cur, s->sl_n);
+    }
     if (s->page) { draw_page(s, frame); return; }
     if (!rd32(CHANGE_WINDOW)) return;
     static const uint8_t book[4] = {G_B, G_O, G_O, G_K}, list[4] = {G_L, G_I, G_S, G_T};
