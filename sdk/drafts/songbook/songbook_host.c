@@ -296,6 +296,10 @@ int main(void)
     host_clear_arr(4); cs1[CHG] = 0;
     tap(LEFT); job(); as_tick(0); tap(RIGHT); job(); as_tick(0);
     check("a clear the list did not mark changed stays cleared after leaving the book", book() == 1 && cs1[W(4) + 30] == 0 && cs1[W(3) + 30] != 0);
+    last_message[0] = 0; misc[0x1e + 672] = 1;                          /* a recorder state left in a track's other buffer (an old project) */
+    tap(LEFT); job(); as_tick(0); tap(RIGHT); job(); as_tick(0);
+    check("a state in a recorder's other buffer does not stop a book switch", book() == 1 && strcmp(last_message, "STOP TO CHANGE BOOK") != 0);
+    misc[0x1e + 672] = 0;
     mark(0x20); job();                             /* book 2 as before, for the checks below */
 
     tap(RIGHT); job();                             /* to book 3, new */
@@ -898,6 +902,10 @@ int main(void)
       check("then the setlist is started again", posted == pp + 2);
       job(); as_tick(0);
       check("on song 2, the song it was on", chosen == 6 && cs1[W(6) + 100] == s1 && chain() == 7);
+      { uint8_t am = arr_mode, mu = msg_up; arr_mode = 1; msg_up = 0; page_draw(); int shown = ntexts;
+        msg_up = 1; page_draw(); int over_msg = ntexts; msg_up = 0; arr_mode = 0; page_draw(); int in_pattern = ntexts;
+        arr_mode = am; msg_up = mu;
+        check("the setlist box is drawn in arranger mode, not over a message or in pattern mode", shown && !over_msg && !in_pattern); }
       cs1[W(3) + 5] ^= 1; }
     /* the same on base 0.8.1, where the module comes up before stock touches the slots: they still match the record
      * (the developer's MKI, 24 November 2026: it came back in BOOKS) */

@@ -720,6 +720,14 @@ static void put_song(struct as_state *s, unsigned which, unsigned k)
     wr8(CHANGED, (uint8_t)(rd8(CHANGED) & ~(1u << (which ? SL_B : SL_A))));
 }
 
+/* The first song from k on with rows: an empty arrangement in a setlist stopped playback until STOP (the developer's
+ * MKI, 25 November 2026), so the chain passes over it. s->sl_n when none is left. */
+static unsigned next_song(const struct as_state *s, unsigned k)
+{
+    while (k < s->sl_n && !(s->songs[k][0x12] | s->songs[k][0x13])) ++k;
+    return k;
+}
+
 /* A song leaves its slot: what was edited in it while it played is kept, to be written to its own file at the end. */
 static void take_back(struct as_state *s, unsigned which)
 {
@@ -778,7 +786,8 @@ static int sl_load(struct as_state *s)
     s->sl_edited = 0;
     s->song_at[1] = 0xff;
     put_song(s, 0, start);
-    if (start + 1 < n) put_song(s, 1, start + 1);
+    unsigned after = next_song(s, start + 1u);
+    if (after < n) put_song(s, 1, after);
     s->sl_active = 1;
     s->sl_go = 1;
     slots_foreign(1, start);
@@ -1151,7 +1160,11 @@ unsigned as_modules_ready(void)
 static int stopped(void)
 {
     if (rd32(PLAYING)) return 0;
-    for (unsigned i = 0; i < 16; ++i) if (rd8(0x80006500u + i) || rd8(0x80004f1eu + i * 84u)) return 0;
+    for (unsigned i = 0; i < 16; ++i) if (rd8(0x80006500u + i)) return 0;
+    /* A track recorder's state, in the buffer the track uses (bit t of 0x80004f18): the other buffer can keep a state
+     * after a load of an old project, and books then never switched, stopped (the developer's MKI, 25 November 2026). */
+    uint32_t bank = rd32(0x80004f18u);
+    for (unsigned t = 0; t < 8; ++t) if (rd8(0x80004f1eu + t * 84u + (bank >> t & 1u) * 672u)) return 0;
     return 1;
 }
 
@@ -1603,7 +1616,7 @@ void as_tick(void *api)
             s->sl_cur = s->song_at[next];                 /* the next one, or the one chosen with CUE + YES */
             slots_foreign(1, s->sl_cur);                  /* a power cycle comes back to it */
             s->sl_cur_slot = (uint8_t)next_slot;
-            unsigned k = s->sl_cur + 1u;
+            unsigned k = next_song(s, s->sl_cur + 1u);
             if (k < s->sl_n) put_song(s, done, k); else s->song_at[done] = 0xff;
             next = done;
             next_slot = done ? SL_B : SL_A;
@@ -1864,7 +1877,9 @@ void as_draw(unsigned char *frame)
 {
     struct as_state *s = ready();
     if (s->peek) { draw_peek(s, frame); return; }
-    if (!s->page && !rd32(CHANGE_WINDOW) && rd32(KEYS + K_YES * 0x18u) == MAIN_YES) {
+    /* Not over a stock message (NO's DISARM ALL), and only in arranger mode (it stayed in pattern mode): the developer's
+     * MKI, 25 November 2026. */
+    if (!s->page && !rd32(CHANGE_WINDOW) && rd32(KEYS + K_YES * 0x18u) == MAIN_YES && !rd32(MESSAGE_UP) && rd32(ARR_MODE)) {
         if (s->sl_active && !s->sl_go) draw_mark(s, frame, s->sl_list, s->sl_cur, s->sl_n);
         /* A project going back into a setlist after a load: shown from the start, not the book first and then the
          * setlist (the developer's MKI, 24 November 2026). */
