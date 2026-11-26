@@ -316,7 +316,11 @@
       "Before removing the module, step back to book 1."
     ],
     "screenshots": [
-      "media/ot-change-book.png"
+      "media/ot-books-list.png",
+      "media/ot-books-added.png",
+      "media/ot-setlists-page.png",
+      "media/ot-setlist-main.png",
+      "media/ot-setlist-window.png"
     ]
   }
 }
