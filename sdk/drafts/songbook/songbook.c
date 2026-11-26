@@ -782,6 +782,7 @@ static int sl_load(struct as_state *s)
     }
     s->sl_n = (uint8_t)n;
     s->sl_list = (uint8_t)l;
+    if (next_song(s, start) < n) start = next_song(s, start);   /* started on an empty song: the first with rows */
     s->sl_cur = (uint8_t)start;
     s->sl_cur_slot = SL_A;
     s->sl_edited = 0;
@@ -1419,6 +1420,7 @@ static int page_key_(struct as_state *s, int code, int pressed)
 static void peek_choose(struct as_state *s)
 {
     unsigned next = s->sl_cur_slot == SL_A ? 1u : 0u, k = s->peek_cur;
+    if (next_song(s, k) < s->sl_n) k = next_song(s, k);   /* an empty song chosen: the first after it with rows */
     s->peek_next = (uint8_t)k;
     if (!s->sl_active || s->sl_end || k >= s->sl_n || s->song_at[next] == k) return;
     put_song(s, next, k);
