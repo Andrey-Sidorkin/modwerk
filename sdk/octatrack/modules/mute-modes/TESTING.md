@@ -1,6 +1,76 @@
 # Mute Modes measurements
 
-Recorded 7 October 2026 for `0.1.0-experimental`; 0.2.0, 0.2.1 and 0.2.2 below, upstream `6f9e5bc9db0ae9fa99fa2f2a0f4de1fdb8e9a136` (0.2.2: sambanks/octabam `08bffd529c0f301708bcb2d48759e54e11f59858`).
+Recorded 7 October 2026 for `0.1.0-experimental`; 0.2.0 to 0.2.4 below, upstream `6f9e5bc9db0ae9fa99fa2f2a0f4de1fdb8e9a136` (0.2.2: sambanks/octabam `08bffd529c0f301708bcb2d48759e54e11f59858`).
+
+## 0.2.4: Mute Modes rests while MUTE MODE is OT (25 and 26 November 2026)
+
+- **The change.** `mm_in_use` answers the base's `ev_in_use`, which the base asks once a UI tick (`runtime.json`, order 50). While GATE is 0 (MUTE MODE OT, the default) it answers 0, after doing `pre`'s OT path itself (one `clr.w` of UNHELD and SHADOW), so a track still muted when MUTE MODE leaves OT is held as before (`p1_key` / `p1_hold`) when the module wakes at the next tick. OTFX, OTFX-T, DT-T and any unknown value answer 1, as `pre` treats them. `runtime.json` lists five detours as `"rests"` (`0x40004dc6`, `0x40006844`, `0x4000f4dc`, `0x4000d498`, `0x40004c72`): while the module answers 0 the base skips its handlers and puts stock's bytes back under them. `fresh_bind` (`0x40006820`) is not one, as `ev_voice_bind` replaces it, and the PERSONALIZE table pointer and count sites never rest, so MUTE MODE's row stays and can always be switched back. At most 5 instructions a UI tick. 0.2.3 cost about a point of the frame interrupt at rest, among the five modules that still did.
+- **Source.** `patch_softmute.s` and `runtime.json` change; `patch_mutemode.s` and `manifest.py` do not. They are byte for byte `modwerk-modules/mute-modes/` at `72d115f01299ce518dc4ada580b1adde96813e89`, the head of the owner's pull request Zac-Kyoti/octatrack-kyoti-fw#5 (branch `mute-modes-0.2.4-rest` of repeat98/octatrack-kyoti-fw). That pull request is **not merged**. The owner waived the author's upstream merge for this version on 26 November 2026, so `sdk/imports/mute-modes-72d115f.json` pins the pull request's head, not the author's main.
+- **Native units unchanged.** The new code assembles only under `MODWERK_EVENTS`, which the native build never defines. Assembled from 0.2.3's and 0.2.4's `patch_softmute.s` with `m68k-elf-as -mcpu=5475` (an empty `remix.inc`), the plain unit (996 bytes) and the SC_KEY unit (1,106 bytes) disassemble identically, relocations included. The events build grows from 1,148 to 1,172 bytes. So `evidence/probes.json`, `evidence/source-identity.json` and the ot_emu load and stress record (`evidence/performance.json`, measured 19 November 2026 on 0.2.3's native image) describe 0.2.4's native code as well. The record is carried to this version unstamped, and the owner's approval binds it with the source.
+- **Package.** `7542f10c56b431761bdd9b4f44a7a3ccb6d4851f31e2c4bb519281dd5d0b6b8c` (3,026 bytes). It is rebuilt with `scripts/build-modules-isolated.sh` from this branch and imported. It is the package the 0.8.2 base admits as its third reviewed Mute Modes table owner, beside 0.2.2 and 0.2.3, with declaration `64253fe3…` (tables at 1,412, 1,480 and 1,548, `module-adapters/table-owners/mute-modes/0.2.4/`). Earlier bases have no table-owner admission for a package with resting sites, so 0.2.4 needs base 0.8.2 or newer.
+
+### Owner's measurements (MKII, 25 November 2026)
+
+Octatrack MKII, OS 1.40C, the owner's unit. A development twin of base 0.8.1 (`eb667962` with `--dev`, identity `493c9cc5dbcb6351…`) was booted from RAM. It admits Mute Modes 0.2.2, 0.2.3 and this package `7542f10c` as table owners. Every trial rolled back, and nothing was flashed.
+
+- **At rest** (`npm run device:price`, the project as the twin booted it, pattern C04 playing, MUTE MODE OT, three readings of 8 s each state), against the same scene without the module:
+
+  | Package | Frame interrupt at rest | CPU meter at rest |
+  |---|---|---|
+  | 0.2.3 (`d460c7e2`) | +0.9 (32.2 → 33.1 %) | +0.9 |
+  | 0.2.4 (`7542f10c`) | +0.0 (32.2 → 32.2 %) | +0.2 |
+
+  No render was skipped. `evidence/cpu-price.json` is that run's 0.2.4 result. The tool's own price writer (`writePrice`, as `--write` would have done) wrote it from the run's saved output, so `resources.cpuPrice` is now 0. In OTFX, OTFX-T and DT-T the module is awake and costs what 0.2.3 did: +1.7 on the author's MKI, nothing muted (0.2.3 below).
+- **Wake and rest.** The same twin and package, on a trial, with C04 playing. T1 was muted with [FUNC] + [T1], then MUTE MODE was changed in PERSONALIZE by keys over USB. The rest site `0x40004dc6` was read 300 ms after each change. Stock's bytes there mean the module is resting; its jump means it is awake.
+
+  | MUTE MODE | GATE | Rest site | T1 |
+  |---|---|---|---|
+  | OT (start) | 0 | stock's bytes: resting | muted |
+  | OTFX | 3 | jump: awake | still muted |
+  | OTFX-T | 1 | jump: awake | still muted |
+  | DT-T | 2 | jump: awake | still muted |
+  | OT again | 0 | stock's bytes: resting again | muted |
+
+  There were no stalls, errors or crashes (the base's counters did not change), and the trial rolled back cleanly.
+- **UI tick.** On a development twin of base 0.8.2 with the UI-tick caching (`cd450fed…`), `profile:3` (stopped) with the package on a trial: the module UI ticks took 117.8 µs, against 116.4 and 115.5 µs with no module before and after, about +1.8 µs (0.2.3: 119.3 µs).
+
+### Not run
+
+- **A listen.** Nobody has listened that a muted track stays silent right after a mode change. "Still muted" above is the mute word, not the sound. There is no per-track level reading over USB, so this needs an ear on the unit. `mm_in_use`'s OT clear is what keeps it working, as in 0.2.2's OT-exit hold (`pre`'s own clear, which the author's MKI passed on 3 November).
+- **The test procedure on the release package with released base 0.8.2** (`device:qualify`), a power cycle, removal, and the release cost procedure on this version.
+- **An MKI**, a muted SIDE-CHAIN key track, and a machine that asks `ev_trig_muted` while the module wakes.
+- **Static cycle count of `mm_in_use`.** It is five instructions on the UI tick and none in the frame interrupt, but no static count was made.
+
+The owner approved the release without these (`sdk/approvals/mute-modes-build-approval.json`). The screens are unchanged, so 0.2.3's five LCD captures stay.
+
+## 0.2.3: Mute Modes answers `ev_trig_muted` (16 November 2026)
+
+- **The change.** A machine that starts its own note from a trig, before stock binds the track's voice (FM Synth), asks the base's raised `ev_trig_muted` which tracks' new trigs are dropped (#777). `mm_trig_muted` answers it: in OTFX-T and DT-T, the muted tracks, or with any track soloed the tracks that are not, less a SIDE-CHAIN key track (KEYMASK). That is `fresh_bind`'s per-track test applied to the whole mute word at once; OT and OTFX answer 0. `runtime.json` subscribes it at order 50. A first draft asked `mm_voice_bind` for all eight tracks: 305 instructions per ask, too much for a machine that asks once per trig in the frame interrupt, so the answer is one mask (16 at most).
+- **Source.** The author's files byte for byte at Zac-Kyoti/octatrack-kyoti-fw `00897f0` (`modwerk-modules/mute-modes/`); `sdk/imports/mute-modes-00897f0.json` replaces `mute-modes-bb9bead.json`. The handler sits under `MODWERK_EVENTS` only, so the native units do not change.
+- **Native probe.** `qualification/run.py` in the toolchain container (a Linux build of this checkout's `ot_emu`, mc68k `4a6d0d17`; `emac`, `periph`, `mc68kColdFireTimingTest` and `mc68kColdFireDivideTest` pass): `evidence/probes.json` and `evidence/source-identity.json` come out byte for byte as 0.2.2's.
+- **Emulator** (`loader_mute_keep_fixture`, run by `sdk/tests/test_mute_modes_runtime.py`; synthetic, as for 0.2.1): after every frame of every MUTE MODE, mute and solo state and KEY layout, with and without an `ev_mute_keep` provider, the base's `modwerk_raise_ev_trig_muted` answers exactly the tracks whose reset `mm_voice_bind` dropped in that frame: 244 asks, 94 of them non-zero, 0 failures in 6,561 checks; d2-d7/a2-a6 and the stack are kept; nothing installed, or only the provider, answers 0. At most 34 instructions per ask through the raise, 16 in the handler. A mask without KEYMASK, or without the solo term, fails. The fixture's `ev_trig_muted` checks follow in their own pull request (they are base files).
+- **Package.** `d460c7e2…` (2,922 bytes). `build.py --octabam-tables mute-modes` and `npm run octatrack:module-packages` build the same bytes.
+- **Table owner.** The declaration and recipe for this package are in `module-adapters/table-owners/` (tables at 1,388, 1,456 and 1,524; `table_declarations.validate` accepts it; SHA-256 `334e3290…`). Its approval and the base rebuilt with it are the owner's, after #1418.
+
+### Hardware report (MKI, 16 November 2026)
+
+The author put the Modwerk base on an Octatrack MKI (OS 1.40C) from a development build of the site (`npm run dev`, base `1625fef6…`). A development twin of base 0.7.5 with this version as the PERSONALIZE table owner (`4b375949…`, MAIN `a9cbf819…`) was booted from RAM over USB, and the release package `d460c7e2…` installed through the development session (accepted, no refusals). The author played a project and reported every step passing; the MUTE MODE word and the mute word were read back over USB at each step:
+
+- With T1 muted while playing: OT cuts at once with its tails (word 0); OTFX cuts the dry sound and lets the FX tails already running ring out (3); OTFX-T also drops new trigs (1); DT-T lets the sounding note finish its amp envelope and drops new trigs (2).
+- In DT-T, soloing T2 silences the other tracks as muted.
+- After a power cycle (the unit started on the flashed base) and a new RAM boot of the twin, the twin restored the module from the card by itself, with MUTE MODE still on DT-T.
+- Removal from the main page was accepted; the MUTE MODE row left PERSONALIZE and a mute cut as stock. With PERSONALIZE still open the base refused it (loader refusal 7, the table owner guard).
+
+The five pictures in `media/` are the unit's own LCD, read over USB during this run (`media/capture.json`).
+
+Not run on a unit: a machine that asks `ev_trig_muted` (FM Synth 0.1.4 has no package yet), a muted SIDE-CHAIN key track (Sidechain Compressor's package is bound to the flashed base, not the twin), an MKII, and the base rebuilt with this table owner.
+
+### CPU price, load and stress (19 November 2026)
+
+- **CPU price** (`resources.cpuPrice`, 1.7 points of the frame interrupt). The author's MKI on the Modwerk base flashed from a development build of the site; a development twin of base 0.7.9 with this version as the PERSONALIZE table owner (the beta flags plus `--dev`, the empty-row pass, then `--controller-policies` and `--controller-layout`; identity `fc4b7abd71ac05e2…`) booted from RAM; `serve --share`; his project, bank A pattern A02 (12 steps) on Part 1. `npm run device:price -- mute-modes` with the package `d460c7e2…`, nothing muted, MUTE MODE at the installed default, 8 s per reading while the pattern played: frame interrupt 48.9 % before and 50.6 % installed (longest frame 87.2 and 90.2 %), CPU meter 60.3 and 62.1 %; again: 49.2 and 50.7 %, 60.3 and 61.7 %. Each trial rolled back; no render skipped. The price is the larger, +1.7.
+- **The muted case on the unit.** T1-T4 muted with [FUNC] + track key. Without the module (stock's mute), two readings: frame interrupt 49.3 % and 49.3 %, CPU 61.3 and 61.2 %. With the module on a rolled-back trial and MUTE MODE set to OTFX-T in PERSONALIZE (the menus left; the MUTE MODE word at `0x800000dc` read 1): 33.9 % and 33.9 %, CPU 46.8 and 46.9 %. OTFX-T starts no new notes on a muted track, so the tracks stop rendering once their tails end, where stock's mute keeps rendering them unheard. During that trial the author listened: T5-T8 played, T1-T4 stayed silent; unmuting T2 and T3 while the pattern played brought each back at its next trig, and mutes and unmutes of T1-T4 repeated brought every track back.
+- **Load and stress** (`evidence/performance.json`, `perf:audit -- check` passes; ot_emu, not chip timing). The module-alone native image (`006aca91…`, the same bytes built from this source and from 0.2.2's) against the original OS under Direct Jump Kyoti's 15 s MIDI flood (1,000 messages a second, clock at 250 BPM), its CC 49-51 (track mute, solo and cue, which would mute, solo and cue every track within 10 s) moved to CC 46-48, with T1-T4 muted, T4 toggled every second, a Part change and back, a STOP and PLAY, and MUTE MODE switched to OT and back: longest frame interrupt 175.0 µs against 168.3 µs (+1.8 % of a frame), idle 54.65 % against 54.87 %, every message reached its handler, no hang. Across all four MUTE MODEs, with and without the events and under the unchanged flood (12 pairs): -5.9 to +6.7 µs, idle 0.00 to 0.49 points lower. The frame hook itself: at most 407 instructions a frame. After the unchanged flood, in OTFX-T, the release bits of tracks 2 and 3 (`0x8000184a`) stayed set after the unmute for the 2 s traced; the original OS keeps a release bit written by hand after the same flood too. On the unit, without a flood, unmuted tracks came back (above).
+- **Not measured on the unit.** The SC_KEY variant (Sidechain Compressor is not on the twin), a machine that asks `ev_trig_muted`, an MKII.
 
 ## 0.2.2: OT-exit hold, a track still muted when MUTE MODE leaves OT stays cut (3 November 2026)
 

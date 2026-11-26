@@ -128,7 +128,8 @@ class UnitSteps(unittest.TestCase):
         with mock.patch.object(qualify, 'send', side_effect=lambda s: sent.append(s) or ''), \
              mock.patch.object(qualify, 'part_copy', return_value=saved):
             self.assertTrue(qualify.save_part(1, saved))
-        self.assertIn('FUNC+PART w600 UP w150 UP w150 UP w150 DOWN w150 DOWN w200 YES', sent[0])
+        # device.mjs's savepart step: SAVE from the Part menu, opened the MKII's or the MKI's way (#2099)
+        self.assertEqual(sent[0].split()[-1], 'savepart')
         with mock.patch.object(qualify, 'send', return_value=''), mock.patch.object(qualify, 'part_copy', return_value=bytes(6322)):
             self.assertFalse(qualify.save_part(1, saved))
 
@@ -162,6 +163,29 @@ class Emulator(unittest.TestCase):
         source = (ROOT / 'scripts/octatrack-qualify.py').read_text()
         self.assertIn('s.settimeout(40)', source)
         self.assertIn("until(lambda: mem(0x800065bd, 2) == bytes([bank, pattern]), 20)", source)
+
+
+class Session(unittest.TestCase):
+    def test_a_port_number_reaches_the_session_over_tcp(self):
+        # Windows Python has no AF_UNIX: there the session listens on a port (MODWERK_DEV_SOCKET=47812).
+        import socket, threading
+        server = socket.create_server(('127.0.0.1', 0))
+        self.addCleanup(server.close)
+        heard = []
+
+        def answer():
+            conn, _ = server.accept()
+            with conn:
+                heard.append(conn.makefile().readline())
+                conn.sendall(b'part 1, stopped\n')
+        threading.Thread(target=answer, daemon=True).start()
+        with mock.patch.object(qualify, 'SOCKET', str(server.getsockname()[1])):
+            self.assertEqual(qualify.send('ui'), 'part 1, stopped\n')
+        self.assertEqual(heard, ['ui\n'])
+
+    def test_a_path_stays_a_unix_socket(self):
+        self.assertEqual(qualify.session_address('/tmp/modwerk-dev.sock'), '/tmp/modwerk-dev.sock')
+        self.assertEqual(qualify.session_address('47812'), ('127.0.0.1', 47812))
 
 
 class Qualify(unittest.TestCase):

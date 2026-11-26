@@ -15,6 +15,29 @@ import { CPU_PRICE_RECORD, manifestWithoutPrice } from './module-cpu-price.mjs'
 export const BASELINE_PATH = 'sdk/approvals/module-qualification-baseline.json'
 export const WAIVERS_PATH = 'sdk/approvals/module-release-waivers.json'
 const sha = bytes => createHash('sha256').update(bytes).digest('hex')
+/** The bytes Git stores for a file under this repository's `* text=auto eol=lf` (.gitattributes): a file Git takes for text keeps
+ * its CRLF line endings as LF, anything else is stored as it is. Every hash here reads these, so a working tree with CRLF (a file
+ * written on Windows) hashes as CI's LF checkout does (Mackity, #2148: a CRLF thumbnail.svg passed locally and failed in CI).
+ * Git's own test (convert.c: gather_stats, convert_is_binary): binary if the file has a NUL, a CR not followed by LF, or more
+ * than one non-printable byte in 128 printable ones. A file committed with CRLF before the attribute stays CRLF in Git; no
+ * module file is (25 November 2026). */
+export function gitStoredBytes(bytes) {
+  let crlf=0, lonecr=0, nul=0, printable=0, nonprintable=0
+  for(let i=0;i<bytes.length;i++) {
+    const c=bytes[i]
+    if(c===13) { if(bytes[i+1]===10) { crlf++; i++ } else lonecr++; continue }
+    if(c===10) continue
+    if(c===127) nonprintable++
+    else if(c<32) { if([8,9,12,27].includes(c)) printable++; else { if(c===0) nul++; nonprintable++ } }
+    else printable++
+  }
+  if(bytes.length&&bytes[bytes.length-1]===26) nonprintable-- // a trailing Ctrl-Z (DOS end of file) is not counted
+  if(!crlf||lonecr||nul||(printable>>7)<nonprintable) return bytes
+  const stored=Buffer.allocUnsafe(bytes.length-crlf)
+  let at=0
+  for(let i=0;i<bytes.length;i++) if(!(bytes[i]===13&&bytes[i+1]===10)) stored[at++]=bytes[i]
+  return stored
+}
 async function inventory(folder, prefix='') {
   const files=[]
   for(const entry of await readdir(folder,{withFileTypes:true})) {
@@ -29,8 +52,14 @@ async function inventory(folder, prefix='') {
 }
 async function fingerprint(folder, paths) {
   const hashes={}
-  for(const path of paths) hashes[path]=sha(await readFile(resolve(folder,path)))
+  for(const path of paths) hashes[path]=sha(gitStoredBytes(await readFile(resolve(folder,path))))
   return sha(JSON.stringify(hashes))
+}
+/** The module's files whose bytes here differ from what Git stores: text with CRLF line endings. */
+export async function crlfModuleFiles(folder) {
+  const found=[]
+  for(const path of await inventory(folder)) { const bytes=await readFile(resolve(folder,path)); if(gitStoredBytes(bytes)!==bytes) found.push(path) }
+  return found
 }
 export async function moduleFolderSha256(folder) { return fingerprint(folder,await inventory(folder)) }
 // A measured CPU price changes no module (owner, 18 November 2026): the folder without the price's readings and its
@@ -39,7 +68,7 @@ export async function moduleFolderSha256(folder) { return fingerprint(folder,awa
 export async function modulePricelessFolderSha256(folder) {
   const hashes={}
   for(const path of (await inventory(folder)).filter(path=>path!==CPU_PRICE_RECORD)) {
-    const bytes=await readFile(resolve(folder,path))
+    const bytes=gitStoredBytes(await readFile(resolve(folder,path)))
     hashes[path]=sha(path==='octamod.module.json'?manifestWithoutPrice(bytes.toString('utf8'))??bytes:bytes)
   }
   return sha(JSON.stringify(hashes))
@@ -56,8 +85,15 @@ export async function moduleNativeSourceSha256(folder, document) {
   return fingerprint(folder,await nativePaths(folder,document))
 }
 // The source a performance record was measured on: the native source without evidence/, so the stamp written into
-// evidence/performance.json (npm run perf:audit -- check FILE --stamp) does not change what it stamps.
+// evidence/performance.json (npm run perf:audit -- check FILE --stamp) does not change what it stamps, and without
+// presentation/ (the library card's art; media/ is never native source), which no compiler reads, as the compiled-package
+// fingerprint leaves it out (module-source.mjs): new art needs no new numbers.
 export async function modulePerformanceSourceSha256(folder, document) {
+  return fingerprint(folder,(await nativePaths(folder,document)).filter(path=>!path.startsWith('evidence/')&&!path.startsWith('presentation/')))
+}
+// What a stamp written before 25 November 2026 names: the same source with presentation/. A record stamped then still
+// holds while that source is unchanged; the next --stamp writes the hash above.
+export async function moduleEarlierPerformanceSourceSha256(folder, document) {
   return fingerprint(folder,(await nativePaths(folder,document)).filter(path=>!path.startsWith('evidence/')))
 }
 // An owner-approved update publishes a new version without fresh evidence for
@@ -65,7 +101,7 @@ export async function modulePerformanceSourceSha256(folder, document) {
 // module folder, so a folder cannot grant it to itself, and binds this exact
 // version and native source. Hardware is never claimed verified; anything not
 // waived is still required.
-const UPDATE_WAIVABLE=['current-build-hardware','chip-worst-case-cycles','complete-memory-bounds','release-documentation']
+const UPDATE_WAIVABLE=['current-build-hardware','chip-worst-case-cycles','complete-memory-bounds','release-documentation','release-cost']
 async function requireOwnerApprovedUpdate(root, folder, document) {
   let approval
   try { approval=JSON.parse(await readFile(resolve(root,'sdk','approvals',document.id+'-build-approval.json'),'utf8')) } catch(error) { if(error.code==='ENOENT') return null; throw error }
@@ -171,22 +207,47 @@ export function evidenceOnBaseProblem({ root, base }) {
   return null
 }
 
-/** A pull request that gives a module a new version also says in its TESTING.md what was tested at that version: 84 of 87 modules
- * name their current version there, and a report left at the old one reads as evidence for the new. Every machine's manifests and drafts. */
-export function testingVersionProblem({ root, base }) {
+/** The module folders this branch gives a new version, every machine's manifests and drafts: { folder, version, text } with text its TESTING.md. */
+function newVersions({ root, base }) {
   const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 32 * 1024 * 1024 })
   const specs = [':(glob)sdk/drafts/*/octamod.module.json', ':(glob)sdk/octatrack/modules/*/octamod.module.json', ':(glob)sdk/*/modules/*/modwerk.module.json']
   const changed = (git('diff', '--name-only', '--diff-filter=AM', base, '--', ...specs) + git('ls-files', '--others', '--exclude-standard', '--', ...specs)).split('\n').filter(Boolean)
+  const found = []
   for (const path of new Set(changed)) {
     const version = JSON.parse(readFileSync(resolve(root, path), 'utf8')).version
     let before = null
     // An Octatrack module's manifest sat under sdk/octabam/modules/ before the folders moved (12 November 2026).
     for (const at of [path, path.replace(/^sdk\/octatrack\/modules\//, 'sdk/octabam/modules/')]) { try { before = JSON.parse(git('show', base + ':' + at)).version; break } catch { /* new here */ } }
     if (version === before || typeof version !== 'string') continue
-    const folder = path.slice(0, path.lastIndexOf('/')), report = resolve(root, folder, 'TESTING.md')
-    const text = (() => { try { return readFileSync(report, 'utf8') } catch { return '' } })(), short = version.replace(/-experimental$/, '')
+    const folder = path.slice(0, path.lastIndexOf('/'))
+    found.push({ folder, version, text: (() => { try { return readFileSync(resolve(root, folder, 'TESTING.md'), 'utf8') } catch { return '' } })() })
+  }
+  return found
+}
+
+/** A pull request that gives a module a new version also says in its TESTING.md what was tested at that version: 84 of 87 modules
+ * name their current version there, and a report left at the old one reads as evidence for the new. */
+export function testingVersionProblem({ root, base }) {
+  for (const { folder, version, text } of newVersions({ root, base })) {
+    const short = version.replace(/-experimental$/, '')
     if (!text.includes(version) && !new RegExp('(?<![\\d.])' + short.replaceAll('.', '\\.') + '(?![\\d.])').test(text))
       return folder + '/TESTING.md does not name ' + version + '. Say what you ran on this version, and on which build, or write that it is not tested yet.'
+  }
+  return null
+}
+
+/** Every new version, first release or update, goes through docs/TEST_PROCEDURE.md (owner, 26 November 2026): its TESTING.md holds the
+ * record of `npm run test:procedure -- <id>`, and for an Octatrack module the shipped package's SHA-256, so the record is of the build
+ * that ships. Five of the ten Octatrack releases before this had only a typed "Tested on a unit" line. Drafts in sdk/drafts/ ship nothing. */
+export function procedureRecordProblem({ root, base }) {
+  for (const { folder, version, text } of newVersions({ root, base })) {
+    if (folder.startsWith('sdk/drafts/')) continue
+    const id = folder.split('/').at(-1), see = ' Every new version goes through the test procedure on the build it ships, with a unit or without one, and its record goes in TESTING.md (docs/TEST_PROCEDURE.md#where-the-record-goes).'
+    if (!new RegExp('test:procedure -- (?:[a-z0-9-]+:)?' + id + '(?![\\w-])').test(text)) return folder + '/TESTING.md has no record of `npm run test:procedure -- ' + id + '` for ' + version + '.' + see
+    // shortcut: only an Octatrack package has a fixed path here, so other machines' records are not matched to a package; add theirs when they commit one.
+    const pkg = resolve(root, 'public/octatrack-modules', id, version + '.mwrm')
+    const sha = (() => { try { return createHash('sha256').update(readFileSync(pkg)).digest('hex') } catch { return null } })()
+    if (sha && !text.includes(sha.slice(0, 8))) return folder + '/TESTING.md does not name the package that ships, public/octatrack-modules/' + id + '/' + version + '.mwrm (SHA-256 ' + sha.slice(0, 12) + '…), so its test procedure record is of another build.' + see
   }
   return null
 }

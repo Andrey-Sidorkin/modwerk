@@ -1,5 +1,23 @@
 [
   {
+    "version": "0.2.4-experimental",
+    "date": "2026-11-26",
+    "changes": [
+      "Costs nothing while MUTE MODE is OT, the default: Mute Modes then rests and the Octatrack runs its own mute code untouched.",
+      "Choosing OTFX, OTFX-T or DT-T wakes it within one screen refresh; tracks muted before keep the OT cut until unmuted, as before.",
+      "Needs Modwerk base 0.8.2 or newer: earlier bases do not accept this version as the owner of the PERSONALIZE rows."
+    ]
+  },
+  {
+    "version": "0.2.3-experimental",
+    "date": "2026-11-13",
+    "changes": [
+      "In OTFX-T and DT-T, a muted FM Synth track stays silent too once FM Synth asks Mute Modes which trigs to drop (FM Synth 0.1.4). Until then, use MUTE MODE OT for FM tracks.",
+      "Other machines that start their own notes can ask the same way; audio tracks behave as before.",
+      "Tested over USB on an MKI: all four modes, solo, a power cycle and removal."
+    ]
+  },
+  {
     "version": "0.2.2-experimental",
     "date": "2026-11-05",
     "changes": [

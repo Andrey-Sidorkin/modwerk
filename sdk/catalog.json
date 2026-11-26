@@ -58,18 +58,33 @@
       "addedAt": "2026-11-17T19:20:00Z"
     },
     {
+      "id": "resonator",
+      "version": "0.1.0-experimental",
+      "addedAt": "2026-11-24T11:32:33Z"
+    },
+    {
+      "id": "mackity",
+      "version": "0.1.0-experimental",
+      "addedAt": "2026-11-25T08:23:53Z"
+    },
+    {
+      "id": "midiverb",
+      "version": "0.1.0-experimental",
+      "addedAt": "2026-11-25T20:15:00Z"
+    },
+    {
       "id": "analog-bassdrum",
       "version": "0.1.7-experimental",
       "addedAt": "2026-10-01T09:19:37Z"
     },
     {
       "id": "usb-audio-out-tracks-main-cue",
-      "version": "0.4.0-experimental",
+      "version": "0.4.1-experimental",
       "addedAt": "2026-10-01T09:19:37Z"
     },
     {
       "id": "quantizer",
-      "version": "0.1.4-experimental",
+      "version": "0.1.5-experimental",
       "addedAt": "2026-10-01T09:19:37Z"
     },
     {
@@ -99,12 +114,12 @@
     },
     {
       "id": "playmodes",
-      "version": "0.2.0-experimental",
+      "version": "0.2.1-experimental",
       "addedAt": "2026-10-07T20:00:00Z"
     },
     {
       "id": "mute-modes",
-      "version": "0.2.2-experimental",
+      "version": "0.2.4-experimental",
       "addedAt": "2026-10-07T20:00:00Z"
     },
     {
@@ -184,7 +199,7 @@
     },
     {
       "id": "syntiz",
-      "version": "0.1.0-experimental",
+      "version": "0.1.1-experimental",
       "addedAt": "2026-10-29T21:00:00Z"
     },
     {
@@ -204,12 +219,12 @@
     },
     {
       "id": "midi-scenes",
-      "version": "0.3.0-experimental",
+      "version": "0.3.1-experimental",
       "addedAt": "2026-11-16T20:00:00Z"
     },
     {
       "id": "kits",
-      "version": "0.1.0-experimental",
+      "version": "0.1.1-experimental",
       "addedAt": "2026-11-16T21:00:00Z"
     },
     {
@@ -226,6 +241,16 @@
       "id": "grain",
       "version": "0.1.3-experimental",
       "addedAt": "2026-11-20T12:00:00Z"
+    },
+    {
+      "id": "songbook",
+      "version": "0.1.0-experimental",
+      "addedAt": "2026-11-24T09:10:19Z"
+    },
+    {
+      "id": "ungemach",
+      "version": "0.1.0-experimental",
+      "addedAt": "2026-11-25T20:05:10Z"
     }
   ]
 }

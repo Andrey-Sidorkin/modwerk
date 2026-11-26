@@ -1240,6 +1240,63 @@ mm_bind_drop:
     movea.l (%sp)+,%a2
     moveq   #1,%d0
     rts
+
+| ev_trig_muted (Modwerk #777): unsigned mm_trig_muted(void). A machine that starts its own
+| note from a trig, before stock binds the voice, asks which tracks' new trigs are dropped
+| now: bit t for track t+1. It is fresh_bind's per-track test as one mask, so a machine that
+| asks once per trig costs a few instructions: in OTFX-T and DT-T a muted track, or with any
+| track soloed a track that is not, less a SIDE-CHAIN key track (KEYMASK, as fb_silence).
+| SOLO_BYTE is MUTE_STATE's low byte, so "anything soloed" and the solo set are one read.
+| OT and OTFX never drop a trig: 0. Modwerk's loader_mute_keep_fixture checks the answer
+| against the resets mm_voice_bind drops in every frame. C convention: %d0/%d1 only.
+    .global mm_trig_muted
+mm_trig_muted:
+    .ifndef ALWAYS_ON
+    move.l  GATE,%d0
+    subq.l  #1,%d0
+    cmpi.l  #1,%d0                      | OTFX-T (1) / DT-T (2) only, fresh_bind's gate
+    bhi.s   tm_none
+    .endif
+    move.l  MUTE_STATE,%d1
+    move.l  %d1,%d0
+    lsr.l   #8,%d0                      | muted tracks -> bits 0..7 (CUE above, masked below)
+    andi.l  #0xff,%d1                   | soloed tracks
+    beq.s   tm_key                      | none soloed: the mutes alone
+    not.l   %d1
+    or.l    %d1,%d0                     | + every track not soloed
+tm_key:
+    .ifdef SC_KEY
+    mvz.b   KEYMASK,%d1
+    not.l   %d1
+    and.l   %d1,%d0                     | less the SIDE-CHAIN key tracks
+    .endif
+    andi.l  #0xff,%d0
+    rts
+tm_none:
+    moveq   #0,%d0
+    rts
+
+| ev_in_use (Modwerk HOOKS.md): unsigned mm_in_use(void), asked from the base's UI tick.
+| MUTE MODE OT is stock: every hook above passes through to stock there, and `pre` only
+| clears UNHELD and SHADOW (one word) each frame. So in OT the module rests: the base
+| leaves mm_voice_bind out of the voice bind and puts stock's bytes back under the five
+| detours runtime.json marks "rests", so the frame and the trig paths never enter this
+| code. This answer does `pre`'s OT clear itself, once a UI tick, so a track still muted
+| when MUTE MODE leaves OT is held exactly as before (p1_key / p1_hold) when the module
+| wakes at the next tick. Any other MUTE MODE (OTFX, OTFX-T, DT-T, or an unknown value,
+| which `pre` treats as active) is in use. C convention: %d0 only.
+    .global mm_in_use
+mm_in_use:
+    .ifndef ALWAYS_ON
+    tst.l   GATE
+    bne.s   iu_on
+    clr.w   (UNHELD).l                  | `pre`'s OT path: every track held, SHADOW 0
+    moveq   #0,%d0
+    rts
+iu_on:
+    .endif
+    moveq   #1,%d0
+    rts
     .endif
 
 | ============================ hook 11: 0x4000d0ba (THE REL_STATE RACE, FIXED SAFELY) ====

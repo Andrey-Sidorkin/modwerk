@@ -19,6 +19,7 @@ import { Icon, type IconName } from './Icon'
 import { OctatrackBackups } from './OctatrackBackups'
 import { CardSetButton } from './UnitPanel'
 import { OctatrackDiagnosticsSettings } from './OctatrackDiagnostics'
+import { SupportActions } from './SupportActions'
 import { OctatrackOverview } from './OctatrackOverview'
 import { OctatrackScreen } from './OctatrackScreen'
 import { RuntimeFeature } from '../engine/elekloader/upload-usb'
@@ -134,7 +135,7 @@ function DesktopOctatrackHub({ view, link, inventory, sets, selectedId, needs, u
     }
     : status === 'connecting' ? { title: 'Connecting to your Octatrack…' }
     : busy ? { title: 'Sync in progress', detail: 'Finish the sync before opening the screen preview.' }
-    : status === 'busy' ? { title: 'Octatrack is in use', detail: LINK_BUSY, action }
+    : status === 'busy' ? { title: 'Octatrack isn’t answering', detail: LINK_BUSY, action }
     : { title: 'Connect your Octatrack', detail: state.notice?.text ?? 'Use a USB data cable to mirror its display here.', action }
   const panel = (name: HubView, content: ReactNode) => <section key={name} className={'hub-view hub-view-' + name} hidden={view !== name} aria-label={name === 'set' ? selected?.name ?? 'Module set' : UNIT_VIEWS.find(item => item.view === name)!.title}>{content}</section>
   // Without USB here, the set still reaches an Octatrack on the base as the module file on the card (Setup).
@@ -151,6 +152,7 @@ function DesktopOctatrackHub({ view, link, inventory, sets, selectedId, needs, u
         <DeviceImage device={DEVICES_BY_ID.octatrack} eager />
         <div><h2 className="hub-view-title">{model}</h2>
           <p role="status"><span className={'unit-led is-' + led} aria-hidden="true" />{line}</p>
+          {state.notice?.tone === 'error' && line === state.notice.text && <SupportActions link={link} what="USB link" error={state.notice.text} />}
           {!usb && !screenView && <div className="hub-browser-note" role="note">
             <Icon name="warn" size={16} />
             <div><strong>Open Modwerk in {USB_BROWSERS}</strong>
