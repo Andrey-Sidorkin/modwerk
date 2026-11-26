@@ -1133,14 +1133,16 @@ unsigned as_modules_ready(void)
         /* The book in the slots was read only in part: still write back only what is edited, after a reinstall or
          * after another build's trial (the owner's review, #1737). */
         s->damaged = (uint8_t)(rd8(RECORD + 6) == 1);
-        s->rec7 = 0;                                      /* installed, not a power cycle: no song to come back to */
     } else {
         s->book = 0;
         ev(0xf);
-        /* A power cycle in a setlist: the module comes up after stock's project load, so no load hook tells it where
-         * the project was. The next card job reads arrbook.work, and the book and the setlist come back from it. */
-        if ((s->rec7 & 0x80u) && slots_are_foreign()) s->boot_place = 1;
     }
+    /* Fresh memory with the record saying slots 7 and 8 hold a setlist's songs: a power cycle (or a reinstall) in a
+     * setlist. No load hook tells the module where the project was, so the next card job reads arrbook.work, and the
+     * book and the setlist come back from it. Whether the slots still match the record does not tell a power cycle
+     * apart: base 0.8.1 brings the module up before stock touches them (the developer's MKI, 24 November 2026). */
+    if ((s->rec7 & 0x80u) && slots_are_foreign()) s->boot_place = 1;
+    else s->rec7 = 0;
     remember(s);
     return 0;
 }
@@ -1535,6 +1537,17 @@ void as_tick(void *api)
                 s->reapply = 0;                          /* stock still busy (a reload reads its samples): again */
                 if (rc == -7 || ++s->restore_ticks > 18000) s->restore = -1;  /* no project, or busy for 5 minutes */
             }
+        }
+    }
+    /* Left in a setlist on book 1: no switch to make, only the setlist to start again (a return waited for a book
+     * switch, so book 1's setlists never came back after a power cycle). */
+    if (s->restore < 0 && s->resume >= 0 && s->reloaded_slots && s->since_hook >= 30 && s->pending < 0
+        && !s->load_read && !s->sl_active && s->sl_req < 0 && stopped()) {
+        int8_t resume = s->resume;
+        if (return_setlist(s)) {
+            int rc = our_post(s);
+            if (rc >= 0) s->reloaded_slots = 0;
+            else { s->sl_req = -1; s->resume = rc == -7 ? -1 : resume; }
         }
     }
     /* The borrowed SYNC job ends with stock's NOW SAFE TO EJECT!: a switch of ours closes it as it opens (about a

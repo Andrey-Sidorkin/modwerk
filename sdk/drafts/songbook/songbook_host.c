@@ -899,6 +899,19 @@ int main(void)
       job(); as_tick(0);
       check("on song 2, the song it was on", chosen == 6 && cs1[W(6) + 100] == s1 && chain() == 7);
       cs1[W(3) + 5] ^= 1; }
+    /* the same on base 0.8.1, where the module comes up before stock touches the slots: they still match the record
+     * (the developer's MKI, 24 November 2026: it came back in BOOKS) */
+    { as_setlists_open(); tap(YES); job(); as_tick(0);        /* the same setlist again, from the first song */
+      stock_chain(); as_tick(0);                      /* song 2 */
+      as_host_reinstall(); as_modules_ready(); chosen = 1;   /* the power cycle, slots as the record has them */
+      int pp = posted;
+      for (int i = 0; i < 10; ++i) as_tick(0);
+      check("base 0.8.1 power cycle in a setlist: a card job is posted at once", posted == pp + 1);
+      job();
+      for (int i = 0; i < 400; ++i) as_tick(0);
+      check("base 0.8.1: then the setlist is started again", posted == pp + 2);
+      job(); as_tick(0);
+      check("base 0.8.1: back in the setlist on the song it was on", chosen == 6); }
 
     uint32_t yes_was = yes_handler; yes_handler = 0;  /* the Arranger menu in front */
     /* the YES that opened the page (stock's menu took its press): its release is stock's, or stock keeps YES routed to
