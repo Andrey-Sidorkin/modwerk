@@ -173,6 +173,7 @@ struct as_state {
     char msg[24];            /* the text of the module's last message box (stock may draw it again later) */
     uint8_t page;            /* the SETLSTS page is open (the Arranger menu's CHAIN item, replaced) */
     uint8_t page_cur, page_top;  /* its cursor (a song of the open setlist) and the first song shown */
+    uint8_t page_seen;       /* the song playing when the page last looked: the cursor follows a change */
     uint8_t page_play;       /* a FUNC + PLAY taken on the page: PLAY's release is ours too */
     uint8_t page_stop;       /* a FUNC + STOP taken on the page: STOP's release is ours too */
     uint8_t clip_n;          /* songs copied on the page (FUNC + REC one, CUE + FUNC + REC the setlist), 0 none */
@@ -1296,6 +1297,7 @@ void as_setlists_open(void)
     if (s->sl_active && s->sl_list == l && s->sl_cur < n) s->page_cur = s->sl_cur;
     else for (unsigned i = 0; i < n; ++i)
         if (s->lists.e[l][i].book == s->book && s->lists.e[l][i].slot == (rd8(INDEX) & 7u)) { s->page_cur = (uint8_t)i; break; }
+    s->page_seen = s->sl_active ? s->sl_cur : 0xff;
     if (s->page_cur >= PAGE_ROWS) s->page_top = (uint8_t)(s->page_cur - PAGE_ROWS + 1u);
 }
 
@@ -1797,6 +1799,14 @@ static void draw_page(struct as_state *s, unsigned char *frame)
     t = put_text(t, "/16"); *t = 0;
     title_row(s, frame, l, line);
     if (!n) { text(frame, 25, 12, "EMPTY"); return; }
+    /* The setlist moved to another song (a restart from this page lands a job later): the cursor goes with it, or it
+     * stayed on the old song (the developer's MKI, 25 November 2026). */
+    if (s->sl_active && s->sl_list == l && s->sl_cur != s->page_seen && s->sl_cur < n) {
+        s->page_cur = s->sl_cur;
+        if (s->page_cur < s->page_top) s->page_top = s->page_cur;
+        if (s->page_cur >= s->page_top + PAGE_ROWS) s->page_top = (uint8_t)(s->page_cur - PAGE_ROWS + 1u);
+    }
+    s->page_seen = s->sl_active ? s->sl_cur : 0xff;
     for (unsigned r = 0; r < PAGE_ROWS && s->page_top + r < n; ++r) {
         const struct sl_entry *e = &s->lists.e[l][s->page_top + r];
         t = put_num(line, e->book + 1u); *t++ = '.'; t = put_num(t, e->slot + 1u); *t++ = ' ';
